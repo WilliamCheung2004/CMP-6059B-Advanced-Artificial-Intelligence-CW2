@@ -1,4 +1,13 @@
 import spacy
+import nltk
+from nltk.corpus import wordnet 
+from spellchecker import SpellChecker
+import rapidfuzz
+import numpy as np
+
+#May need this if you don't have
+# nltk.download('wordnet')
+# nltk.download('omw-1.4')
 
 #spacy.cli.download('en_core_web_sm')
 nlp = spacy.load('en_core_web_sm')
@@ -47,23 +56,61 @@ def extract_entities(message: str) -> dict:
         elif ent.label_ == 'TIME':
             entities['time'] = ent.text
     
-    return entities
+    return entities        
+    
+def get_synonyms(word):
+    synonyms = set()
+    # Only synonyms that are verbs 
+    for syn in wordnet.synsets(word, pos=wordnet.VERB):
+        for lemma in syn.lemmas():
+            synonyms.add(lemma.name().replace('_', ' '))
+    return synonyms
+
+#  get synonyms for a word
+def get_synonym(word):
+    synonyms = set()
+    for syn in wordnet.synsets(word):
+        for lemma in syn.lemmas():
+            synonyms.add(lemma.name().replace('_', ' '))
+    return synonyms
+
+spell = SpellChecker()
+spell.distance = 5
+
+def correctResponse(words):
+    
+    #Tokenize input 
+    doc = nlp(words)
+    
+    #Getting words
+    tokens = [token.text for token in doc if token.is_alpha]
+    
+    #Create list of unknown words from that
+    unkown = spell.unknown(tokens)
+
+    for word in unkown:
+        # print(spell.correction(word))
+        print(spell.candidates(word))
+        print(spell.correction(word))
+        
 
 if __name__ == '__main__':
-    tests = [
-        "Good morning!",
-        "I want to find a cheap ticket from Norwich to London",
-        "Can I get a ticket from Norwich to Oxford on the 25th March?",
-        "My train is delayed by 10 minutes",
-        "Goodbye!",
-        "random gibberish blah blah",
-        "Will my train arrive on time?"
-    ]
+    # tests = [
+    #     "Good morning!",
+    #     "I want to find a cheap ticket from Norwich to London",
+    #     "Can I get a ticket from Norwich to Oxford on the 25th March?",
+    #     "My train is delayed by 10 minutes",
+    #     "Goodbye!",
+    #     "random gibberish blah blah",
+    #     "Will my train arrive on time?"
+    # ]
     
-    for msg in tests:
-        intent = detect_intent(msg)
-        entities = extract_entities(msg)
-        print(f"Message: '{msg}'")
-        print(f"  Intent: {intent}")
-        print(f"  Entities: {entities}")
-        print()
+    # for msg in tests:
+    #     intent = detect_intent(msg)
+    #     entities = extract_entities(msg)
+    #     print(f"Message: '{msg}'")
+    #     print(f"  Intent: {intent}")
+    #     print(f"  Entities: {entities}")
+    #     print()
+    sentences = spell.unknown(["i", "want", "to", "get", "a", "train", "station"])
+    print(correctResponse(sentences))

@@ -17,8 +17,8 @@ class TicketPreference(Fact):
 
 class TrainChatbot(KnowledgeEngine):
     @Rule(Journey(origin=MATCH.o, destination=MATCH.d, date=MATCH.dt))
-    def ask_ticket_type(self, o, d, dt):
-        print(f"User wants to travel from {o} to {d} on {dt}.")
+    def ask_ticket(self, o, d, dt):
+        print(f"You want to travel from {o} to {d} on {dt}.")
         print("Do you want the cheapest, fastest, or any ticket?")
 
     @Rule(Journey(origin=MATCH.origin, destination=MATCH.destination, date=MATCH.dt),
@@ -38,7 +38,7 @@ engine = TrainChatbot()
 engine.reset()
 
 # Use journey info
-engine.declare(Journey(origin="London", destination="Manchester", date="2026-04-01"))
+# engine.declare(Journey(origin="London", destination="Manchester", date="2026-04-01"))
 
 # User provides ticket preference
 engine.declare(TicketPreference(type="cheapest"))
