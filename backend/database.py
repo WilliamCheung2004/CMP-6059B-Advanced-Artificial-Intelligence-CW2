@@ -1,15 +1,16 @@
 import sqlite3
 import os
 
+#define the path to the SQLite database file
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, 'chatbot.db')
 
+#returns a connection to the SQLite database
 def get_db_connection():
-    """Returns a connection to the SQLite database"""
     return sqlite3.connect(DB_PATH)
 
+#initialises the database with necessary tables if they don't exist
 def init_db():
-    """Initialises the database with necessary tables"""
     conn = get_db_connection()
     cursor = conn.cursor()
     
@@ -42,9 +43,8 @@ def init_db():
     conn.commit()
     conn.close()
     
+#saves a conversation message to the database for a certain session ID
 def save_message(session_id: str, user_input: str, bot_response: str, intent: str = None): 
-    """Saves a conversation message to the database"""
-    
     conn = get_db_connection()
     cursor = conn.cursor()
     
@@ -56,10 +56,8 @@ def save_message(session_id: str, user_input: str, bot_response: str, intent: st
     conn.commit()
     conn.close()
     
-def save_journey(session_id: str, origin: str, destination: str, 
-                 travel_date: str, return_date: str = None, ticket_type: str = None):
-    """Saves a user journey to the database"""
-    
+#saves a user journey to the database for a certain session ID
+def save_journey(session_id: str, origin: str, destination: str, travel_date: str, return_date: str = None, ticket_type: str = None):    
     conn = get_db_connection()
     cursor = conn.cursor()
     
@@ -71,9 +69,8 @@ def save_journey(session_id: str, origin: str, destination: str,
     conn.commit()
     conn.close()
     
+#retrieve conversation history for a given session ID
 def get_conversation_history(session_id: str) -> list:
-    """Retrieves conversation history for a given session ID"""
-    
     conn = get_db_connection()
     cursor = conn.cursor()
     

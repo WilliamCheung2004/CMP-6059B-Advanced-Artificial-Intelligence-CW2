@@ -4,8 +4,8 @@ import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+#load station names and codes from a CSV file into the knowledge base
 def load_stations():
-    """Loads station names and codes from a CSV file into the knowledge base"""
     stations = {}
     with open(os.path.join(BASE_DIR, 'stations.csv'), 'r') as f:
         reader = csv.DictReader(f)
@@ -14,14 +14,15 @@ def load_stations():
             
     return stations
 
+
 #load the knowledge base from the JSON file
 with open(os.path.join(BASE_DIR, 'knowledge_base.json'), 'r') as f:
     KB = json.load(f)
     
 KB['stations'] = load_stations()
 
+#returns the station code for a given station name, or None if not found
 def get_station_code(station_name: str) -> str:
-    """Returns the station code e.g. Norwich → NRW"""
     station_name = station_name.strip().upper()  # Normalise input
     if station_name in KB['stations']:
         return KB['stations'][station_name]
@@ -32,8 +33,8 @@ def get_station_code(station_name: str) -> str:
         
     return None
 
+#returns the FAQ answer for a given topic, or None if not found
 def get_faq(topic: str) -> str:
-    """Returns FAQ answer for a topic e.g. 'railcard'"""
     #check for keyword match in faqs
     topic_lower = topic.lower()
     for key, answer in KB['faqs'].items():
@@ -41,12 +42,12 @@ def get_faq(topic: str) -> str:
             return answer
     return None
 
+#returns the rule for a given topic, or None if not found
 def get_rule(topic: str) -> str:
-    """Returns a rule e.g. 'advance_booking'"""
     return KB['rules'].get(topic, None)
 
+#returns a list of all known station names
 def get_all_stations() -> list:
-    """Returns list of all known station names"""
     return list(KB['stations'].keys())
 
 
