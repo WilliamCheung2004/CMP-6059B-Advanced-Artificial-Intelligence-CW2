@@ -1,8 +1,8 @@
 import spacy
 import nltk
 from nltk.corpus import wordnet 
-from spellchecker import SpellChecker
-import rapidfuzz
+import pkg_resources
+from symspellpy import SymSpell, Verbosity
 import numpy as np
 
 #May need this if you don't have
@@ -11,6 +11,11 @@ import numpy as np
 
 #spacy.cli.download('en_core_web_sm')
 nlp = spacy.load('en_core_web_sm')
+
+sym_spell = SymSpell(max_dictionary_edit_distance = 2, prefix_length=7)
+
+dictionary_path = pkg_resources.resource_filename("symspellpy", "frequency_dictionary_en_82_765.txt")
+sym_spell.load_dictionary(dictionary_path, term_index=0, count_index=1)
 
 #define intents with keywords
 INTENTS = {
@@ -74,25 +79,10 @@ def get_synonym(word):
             synonyms.add(lemma.name().replace('_', ' '))
     return synonyms
 
-spell = SpellChecker()
-spell.distance = 5
-
-def correctResponse(words):
-    
-    #Tokenize input 
-    doc = nlp(words)
-    
-    #Getting words
-    tokens = [token.text for token in doc if token.is_alpha]
-    
-    #Create list of unknown words from that
-    unkown = spell.unknown(tokens)
-
-    for word in unkown:
-        # print(spell.correction(word))
-        print(spell.candidates(word))
-        print(spell.correction(word))
-        
+      
+def correctWords(words):
+    results = sym_spell.word_segmentation(words)
+    print(results)
 
 if __name__ == '__main__':
     # tests = [
@@ -112,5 +102,5 @@ if __name__ == '__main__':
     #     print(f"  Intent: {intent}")
     #     print(f"  Entities: {entities}")
     #     print()
-    sentences = spell.unknown(["i", "want", "to", "get", "a", "train", "station"])
-    print(correctResponse(sentences))
+    sentences = "I waantewe a traein staetion"
+    correctWords(sentences)
