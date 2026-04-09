@@ -52,6 +52,8 @@
 
 body {
   margin: 0;
+  font-family:-apple-system, BlinkMacSystemFont, sans-serif;
+background:#042C53;
 }
 
 #root {

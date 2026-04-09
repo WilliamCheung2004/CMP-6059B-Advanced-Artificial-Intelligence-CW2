@@ -1,0 +1,46 @@
+.navbar{
+display:flex;
+justify-content:space-between;
+align-items:center;
+
+background:#0A3A66;
+color:white;
+
+width:95%;
+max-width:1400px;
+margin:20px auto;
+padding:12px 20px;
+border-radius:20px;
+}
+
+.navLeft{
+display:flex;
+align-items:center;
+gap:10px;
+}
+
+.logoBox{
+background:white;
+color:#042C53;
+padding:6px 10px;
+border-radius:8px;
+font-weight:bold;
+}
+
+.chatBtn{
+background:white;
+border:none;
+padding:8px 16px;
+border-radius:12px;
+margin-right:14px;
+cursor:pointer;
+color:#042C53;
+}
+
+.helpBtn{
+background:none;
+border:none;
+color:white;
+margin-right:14px;
+cursor:pointer;
+}
