@@ -1,0 +1,33 @@
+{
+    "stations": {},
+
+    "faqs": {
+        "railcard": "A railcard gives you 1/3 off most rail fares. Popular ones include 16-25, 26-30, and Two Together railcards.",
+        "refund": "You can refund an unused ticket before departure. Advance tickets are usually non-refundable.",
+        "luggage": "Most train services allow 2 pieces of hand luggage at no extra cost.",
+        "peak": "Peak times are typically 7-9am and 4-7pm on weekdays. Off-peak tickets are cheaper outside these times."
+    },
+
+    "rules": {
+        "advance_booking": "Cheapest advance tickets are released 12 weeks before travel.",
+        "off_peak": "Travelling off-peak or at weekends is usually cheaper.",
+        "split_ticketing": "Sometimes buying two tickets for parts of a journey is cheaper than one ticket for the whole journey."
+    },
+
+    "ticket_types": {
+        "single": "A single ticket is valid for one journey in one direction.",
+        "return": "A return ticket is valid for a round trip between two stations.",
+        "advance": "Advance tickets are cheaper but non-refundable and only valid on specific trains.",
+        "off_peak": "Off-peak tickets are more flexible and valid outside peak hours.",
+        "anytime": "Anytime tickets are the most flexible but also the most expensive."
+    },
+
+    "railcards": {
+        "16-25": "For young people aged 16-25, offering 1/3 off most rail fares.",
+        "26-30": "For people aged 26-30, offering 1/3 off most rail fares.",
+        "two_together": "For two named adults travelling together, offering 1/3 off most rail fares.",
+        "family": "For families with children, offering 1/3 off most rail fares.",
+        "senior": "For people aged 60 and over, offering 1/3 off most rail fares.",
+        "disabled": "For people with disabilities, offering 1/3 off most rail fares."
+    }
+}
