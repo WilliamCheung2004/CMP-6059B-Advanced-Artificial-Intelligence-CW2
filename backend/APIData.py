@@ -2,17 +2,22 @@ import requests
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 from datetime import datetime
-import csv
+import os 
+from dotenv import load_dotenv
+
+load_dotenv(dotenv_path='user.env')  
+
+username = os.getenv("USERNAME")
+password = os.getenv("PASSWORD") 
 
 # User inputs
-username = "wwang"
-password = "?i92S6"
 station_code = "NRW"           
 stopping_pattern = "DEPART"    
 forced_destination = "LST"     
 
 # Build SOAP envelope
 from_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+print(from_time)
 
 soap_envelope = f"""<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"

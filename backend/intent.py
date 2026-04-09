@@ -1,12 +1,23 @@
 import spacy
+<<<<<<< HEAD
+=======
+import nltk
+from nltk.corpus import wordnet 
+from spellchecker import SpellChecker
+import rapidfuzz
+>>>>>>> parent of 18b64b3 (Train API + Modifications to Intent)
 import numpy as np
 import re
 
 # spacy.cli.download('en_core_web_sm')
 nlp = spacy.load('en_core_web_sm')
 
+<<<<<<< HEAD
 DATE_PATTERN = r"\b(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\b"
 
+=======
+#define intents with keywords
+>>>>>>> parent of 18b64b3 (Train API + Modifications to Intent)
 INTENTS = {
     # Conversation
     'greeting':  ['hello', 'hi', 'hey', 'good morning', 'good afternoon', 'good evening',
@@ -87,6 +98,7 @@ def extract_entities(message: str) -> dict:
 
     return entities
 
+<<<<<<< HEAD
 
 if __name__ == '__main__':
     tests = [
@@ -114,3 +126,45 @@ if __name__ == '__main__':
         print(f"  All intents:     {intents}")
         print(f"  Entities:        {entities}")
         print()
+=======
+spell = SpellChecker()
+spell.distance = 5
+
+def correctResponse(words):
+    
+    #Tokenize input 
+    doc = nlp(words)
+    
+    #Getting words
+    tokens = [token.text for token in doc if token.is_alpha]
+    
+    #Create list of unknown words from that
+    unkown = spell.unknown(tokens)
+
+    for word in unkown:
+        # print(spell.correction(word))
+        print(spell.candidates(word))
+        print(spell.correction(word))
+        
+
+if __name__ == '__main__':
+    # tests = [
+    #     "Good morning!",
+    #     "I want to find a cheap ticket from Norwich to London",
+    #     "Can I get a ticket from Norwich to Oxford on the 25th March?",
+    #     "My train is delayed by 10 minutes",
+    #     "Goodbye!",
+    #     "random gibberish blah blah",
+    #     "Will my train arrive on time?"
+    # ]
+    
+    # for msg in tests:
+    #     intent = detect_intent(msg)
+    #     entities = extract_entities(msg)
+    #     print(f"Message: '{msg}'")
+    #     print(f"  Intent: {intent}")
+    #     print(f"  Entities: {entities}")
+    #     print()
+    sentences = spell.unknown(["i", "want", "to", "get", "a", "train", "station"])
+    print(correctResponse(sentences))
+>>>>>>> parent of 18b64b3 (Train API + Modifications to Intent)
