@@ -31,8 +31,8 @@ class TrainChatbot(KnowledgeEngine):
         ]
         if ticket_type == "cheapest":
             selected = min(tickets, key=lambda x: x["price"])
-        elif ticket_type == "fastest":
-            selected = min(tickets, key=lambda x: x["price"])  # Assuming fastest is also cheapest for simplicity
+        elif ticket_type == "quickest":
+            selected = min(tickets, key=lambda x: x["price"])  #
         else:
             selected = tickets[2]  # Anytime
         self.modify(journey, price=selected['price'])
@@ -42,7 +42,7 @@ class TrainChatbot(KnowledgeEngine):
     @Rule(Journey(origin=MATCH.o, destination=MATCH.d, date=MATCH.dt, departure_time=MATCH.t))
     def ask_ticket(self, o, d, dt, t):
         print(f"You want to travel from {o} to {d} on {dt} at {t}.")
-        print("Do you want the cheapest, fastest, or any ticket?")
+        print(f"Do you want the cheapest, quickest, or any ticket from {o} to {d} at {t}?")
 
     @Rule(AS.journey << Journey(origin=MATCH.origin, destination=MATCH.destination, date=MATCH.dt, departure_time=MATCH.departure_time),
           TicketPreference(type=MATCH.ticket_type))

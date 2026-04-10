@@ -1,23 +1,19 @@
 import spacy
-<<<<<<< HEAD
-=======
-import nltk
-from nltk.corpus import wordnet 
-from spellchecker import SpellChecker
-import rapidfuzz
->>>>>>> parent of 18b64b3 (Train API + Modifications to Intent)
 import numpy as np
 import re
 
 # spacy.cli.download('en_core_web_sm')
 nlp = spacy.load('en_core_web_sm')
 
-<<<<<<< HEAD
+STATIONS = []
+
+# Read stations.csv and add to station list
+with open('stations.csv', 'r') as f:
+    for line in f:
+        STATIONS.append(line.strip().lower())
+
 DATE_PATTERN = r"\b(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\b"
 
-=======
-#define intents with keywords
->>>>>>> parent of 18b64b3 (Train API + Modifications to Intent)
 INTENTS = {
     # Conversation
     'greeting':  ['hello', 'hi', 'hey', 'good morning', 'good afternoon', 'good evening',
@@ -50,13 +46,6 @@ INTENTS = {
                     'money back', 'railcard'],
 }
 
-STATIONS = []
-
-# Read stations.csv and add to station list
-with open('stations.csv', 'r') as f:
-    for line in f:
-        STATIONS.append(line.strip().lower())
-
 def detect_intent(message: str) -> list[str]:
     doc = nlp(message.lower())
     tokens = [token.text.lower() for token in doc]
@@ -71,34 +60,68 @@ def detect_intent(message: str) -> list[str]:
 
     return sorted(scores, key=lambda x: scores[x], reverse=True) if scores else ['unknown']
 
+def find_stations(message):
+    msg = message.lower()
+    found = []
+
+    for station in STATIONS:
+        if station in msg:
+            found.append(station)
+
+    return found
+
+
+def assign_route(message, stations):
+    msg = message.lower()
+    origin = None
+    destination = None
+
+    for station in stations:
+        if f"from {station}" in msg:
+            origin = station
+        if f"to {station}" in msg:
+            destination = station
+
+    # fallback logic
+    if len(stations) >= 2:
+        if not origin and not destination:
+            origin, destination = stations[0], stations[1]
+        elif not origin:
+            origin = stations[0]
+        elif not destination:
+            destination = stations[1]
+
+    return origin, destination
+
+
 def extract_entities(message: str) -> dict:
     doc = nlp(message)
     entities = {}
 
-    # --- Existing spaCy NER ---
+    # DATE & TIME
     for ent in doc.ents:
-        label = ent.label_
-        text = ent.text
+        if ent.label_ == 'DATE':
+            entities['date'] = ent.text
+        elif ent.label_ == 'TIME':
+            entities['time'] = ent.text
 
-        if label in ('GPE', 'FAC') or (label == 'ORG' and text.lower() in STATIONS):
-            if 'origin' not in entities:
-                entities['origin'] = text
-            else:
-                entities['destination'] = text
-        elif label == 'DATE':
-            entities['date'] = text
-        elif label == 'TIME':
-            entities['time'] = text
-
-    # --- NEW: Regex fallback for numeric dates ---
+    # Fallback for numeric dates
     if 'date' not in entities:
         match = re.search(DATE_PATTERN, message)
         if match:
             entities['date'] = match.group()
 
+    # Station detection
+    stations = find_stations(message)
+    origin, destination = assign_route(message, stations)
+
+    if origin:
+        entities['origin'] = origin
+    if destination:
+        entities['destination'] = destination
+
     return entities
 
-<<<<<<< HEAD
 
 if __name__ == '__main__':
     tests = [
@@ -126,45 +149,3 @@ if __name__ == '__main__':
         print(f"  All intents:     {intents}")
         print(f"  Entities:        {entities}")
         print()
-=======
-spell = SpellChecker()
-spell.distance = 5
-
-def correctResponse(words):
-    
-    #Tokenize input 
-    doc = nlp(words)
-    
-    #Getting words
-    tokens = [token.text for token in doc if token.is_alpha]
-    
-    #Create list of unknown words from that
-    unkown = spell.unknown(tokens)
-
-    for word in unkown:
-        # print(spell.correction(word))
-        print(spell.candidates(word))
-        print(spell.correction(word))
-        
-
-if __name__ == '__main__':
-    # tests = [
-    #     "Good morning!",
-    #     "I want to find a cheap ticket from Norwich to London",
-    #     "Can I get a ticket from Norwich to Oxford on the 25th March?",
-    #     "My train is delayed by 10 minutes",
-    #     "Goodbye!",
-    #     "random gibberish blah blah",
-    #     "Will my train arrive on time?"
-    # ]
-    
-    # for msg in tests:
-    #     intent = detect_intent(msg)
-    #     entities = extract_entities(msg)
-    #     print(f"Message: '{msg}'")
-    #     print(f"  Intent: {intent}")
-    #     print(f"  Entities: {entities}")
-    #     print()
-    sentences = spell.unknown(["i", "want", "to", "get", "a", "train", "station"])
-    print(correctResponse(sentences))
->>>>>>> parent of 18b64b3 (Train API + Modifications to Intent)
