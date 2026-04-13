@@ -1,46 +1,85 @@
-.navbar{
-display:flex;
-justify-content:space-between;
-align-items:center;
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 
-background:#0A3A66;
-color:white;
+    background: #0D3D70;
+    border: 1px solid #2E5A8C;
+    color: white;
 
-width:95%;
-max-width:1400px;
-margin:20px auto;
-padding:12px 20px;
-border-radius:20px;
+    width: 95%;
+    max-width: 1400px;
+    margin: 20px auto 10px;
+    padding: 16px 28px;
+    border-radius: 50px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
 }
 
-.navLeft{
-display:flex;
-align-items:center;
-gap:10px;
+.navLeft {
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
-.logoBox{
-background:white;
-color:#042C53;
-padding:6px 10px;
-border-radius:8px;
-font-weight:bold;
+.logoText {
+    font-size: 28px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #FFFFFF 0%, #D6E4F6 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    letter-spacing: 1px;
 }
 
-.chatBtn{
-background:white;
-border:none;
-padding:8px 16px;
-border-radius:12px;
-margin-right:14px;
-cursor:pointer;
-color:#042C53;
+.logoBox {
+    background: white;
+    color: #042C53;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-weight: bold;
 }
 
-.helpBtn{
-background:none;
-border:none;
-color:white;
-margin-right:14px;
-cursor:pointer;
+.navRight {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.chatBtn {
+    background: white;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 40px;
+    font-weight: 600;
+    font-size: 16px;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    margin-right: 14px;
+    cursor: pointer;
+    color: #042C53;
+}
+
+.chatBtn:hover {
+    background: #E8F0FE;
+    transition: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.helpBtn {
+
+    background: transparent;
+    border: 1px solid #7A9BC2;
+    padding: 10px 24px;
+    border-radius: 40px;
+    font-weight: 500;
+    font-size: 16px;
+    transition: all 0.2s ease;
+    color: white;
+    cursor: pointer;
+}
+
+.helpBtn:hover {
+    background: #1A4A7A;
+    border-color: #FFFFFF;
+    transform: translateY(-2px);
 }

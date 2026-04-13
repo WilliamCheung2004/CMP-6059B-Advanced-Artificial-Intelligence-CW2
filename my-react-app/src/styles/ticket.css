@@ -1,0 +1,119 @@
+.ticketList {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 16px;
+    width: 100%;
+}
+
+.ticketCard {
+    background: #FFFFFF;
+    border-radius: 16px;
+    padding: 16px 18px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+    border: 1px solid #E0E9F5;
+    position: relative;
+    transition: transform 0.1s ease;
+    width: 100%;
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
+.ticketCard:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.1);
+}
+
+.ticketRoute {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-weight: 700;
+    font-size: 15px;
+    color: #042C53;
+    margin-bottom: 6px;
+}
+
+.arrow {
+    color: #7A9BC2;
+    font-size: 15px;
+}
+
+.ticketTime {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 12px;
+    font-size: 14px;
+}
+
+.departureTime {
+    font-weight: 600;
+    color: #165086;
+}
+
+.changes {
+    color: #6B7F99;
+    font-size: 13px;
+}
+
+.ticketFooter {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.price-wrapper{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.price {
+    font-size: 20px;
+    font-weight: 800;
+    color: #042C53;
+}
+
+.bookButton {
+    background: #165086;
+    color: white;
+    text-decoration: none;
+    padding: 8px 18px;
+    border-radius: 40px;
+    font-weight: 600;
+    font-size: 14px;
+    transition: background 0.2s;
+    border: none;
+    cursor: pointer;
+    white-space:nowrap;
+}
+
+.bookButton:hover {
+    background: #0f3c67;
+}
+
+.badge {
+    background: #2E7D32;        
+    color: white;
+    font-weight: 700;
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 30px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+.badge.cheapest {
+    background: #2E7D32;
+}
+
+.badge.fastest {
+    background: #1565C0;
+}
+
