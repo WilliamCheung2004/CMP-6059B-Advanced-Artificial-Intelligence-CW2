@@ -1,3 +1,5 @@
+import string
+
 import requests
 import os
 import xml.etree.ElementTree as ET
@@ -15,194 +17,234 @@ PASSWORD = os.environ.get("CURRENT_PASSWORD")
 NS = {
     'soap': 'http://schemas.xmlsoap.org/soap/envelope/',
     'jps': 'http://www.thalesgroup.com/ojp/jpservices',
-    'com': 'http://www.thalesgroup.com/ojp/common'
+    'com': 'http://www.thalesgroup.com/ojp/common',
+    'ns3': 'http://www.thalesgroup.com/ojp/common'
 }
+
 
 URL = "https://ojp.nationalrail.co.uk/webservices/jpservices"
 HEADERS = {'Content-Type': 'text/xml; charset=utf-8'}
 
-
-def get_departures(station_code, destination=None):
-    from_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
-
+def journey_plan(origin, destination, time):
     soap_envelope = f"""<?xml version="1.0" encoding="UTF-8"?>
     <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
                       xmlns:jps="http://www.thalesgroup.com/ojp/jpservices"
                       xmlns:com="http://www.thalesgroup.com/ojp/common">
        <soapenv:Header/>
        <soapenv:Body>
-          <jps:DepartureBoardRequest>
-             <jps:specifiedStation>
-                <jps:primaryStationCrs>{station_code}</jps:primaryStationCrs>
-             </jps:specifiedStation>
-             <jps:stoppingPattern>DEPART</jps:stoppingPattern>
-             <jps:fromTime>{from_time}</jps:fromTime>
-          </jps:DepartureBoardRequest>
+          <jps:RealtimeJourneyPlanRequest>
+
+             <jps:origin>
+                <com:stationCRS>{origin}</com:stationCRS>
+             </jps:origin>
+
+             <jps:destination>
+                <com:stationCRS>{destination}</com:stationCRS>
+             </jps:destination>
+
+             <jps:realtimeEnquiry>STANDARD</jps:realtimeEnquiry>
+
+             <jps:outwardTime>
+                <jps:departBy>{time}</jps:departBy>
+             </jps:outwardTime>
+
+             <jps:directTrains>false</jps:directTrains>
+
+          </jps:RealtimeJourneyPlanRequest>
        </soapenv:Body>
     </soapenv:Envelope>"""
 
     response = requests.post(URL, data=soap_envelope, headers=HEADERS, auth=(USERNAME, PASSWORD))
 
-    if response.status_code != 200:
-        raise RuntimeError(f"API error {response.status_code}: {response.text}")
-
     root = ET.fromstring(response.text)
     body = root.find('soap:Body', NS)
-    board = body.find('.//jps:DepartureBoardResponse', NS)
+    jp = body.find('.//jps:RealtimeJourneyPlanResponse', NS)
 
-    journeys = board.findall('.//jps:stationJourneyDetail', NS)
+    journeys = jp.findall('.//jps:outwardJourney', NS)
 
     results = []
 
     for j in journeys:
-        origin = j.findtext('com:originStation', default='', namespaces=NS)
-        dest = j.findtext('com:destinationStation', default='', namespaces=NS)
-        dep_time = j.findtext('com:timetable/com:scheduled/com:departure', default='', namespaces=NS)
-        platform = j.findtext('com:platform', default='', namespaces=NS)
 
-        if destination and dest != destination:
+        # ⭐ Journey-level origin/destination
+        journey_origin = j.findtext('jps:origin', default='', namespaces=NS)
+        journey_dest = j.findtext('jps:destination', default='', namespaces=NS)
+
+        # ⭐ Filter by destination input
+        if journey_dest.upper() != destination.upper():
             continue
 
+        # ⭐ Extract service bulletin description (prefix ns3 == com)
+        bulletin = j.findtext('.//jps:serviceBulletins/com:description', default='', namespaces=NS)
+
+        legs = []
+
+        for leg in j.findall('.//jps:leg', NS):
+
+            mode = leg.findtext('jps:mode', default='', namespaces=NS)
+            board = leg.findtext('jps:board', default='', namespaces=NS)
+            alight = leg.findtext('jps:alight', default='', namespaces=NS)
+
+            sched_dep = leg.findtext('.//jps:scheduled/jps:departure', default='', namespaces=NS)
+            sched_arr = leg.findtext('.//jps:scheduled/jps:arrival', default='', namespaces=NS)
+
+            rt_dep = leg.findtext('.//jps:realtime/jps:departure', default='', namespaces=NS)
+            rt_arr = leg.findtext('.//jps:realtime/jps:arrival', default='', namespaces=NS)
+
+            operator = leg.findtext('.//com:name', default='', namespaces=NS)
+
+            legs.append({
+                "mode": mode,
+                "origin": board,
+                "destination": alight,
+                "scheduled_departure": sched_dep,
+                "scheduled_arrival": sched_arr,
+                "realtime_departure": rt_dep,
+                "realtime_arrival": rt_arr,
+                "operator": operator
+            })
+
         results.append({
-            "origin": origin,
-            "destination": dest,
-            "departure_time": dep_time,
-            "platform": platform
+            "journey_origin": journey_origin,
+            "journey_destination": journey_dest,
+            "service_bulletin": bulletin,
+            "legs": legs
         })
 
     return results
 
+
+
 #Get the stations inbetween origin and destination 
-def get_calling_points(origin, destination, dep_time, arr_time):
-    soap = f"""<?xml version="1.0" encoding="UTF-8"?>
+def journey_plan(origin, destination, time):
+    soap_envelope = f"""<?xml version="1.0" encoding="UTF-8"?>
     <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
-                      xmlns:jps="http://www.thalesgroup.com/ojp/jpservices">
+                      xmlns:jps="http://www.thalesgroup.com/ojp/jpservices"
+                      xmlns:com="http://www.thalesgroup.com/ojp/common">
        <soapenv:Header/>
        <soapenv:Body>
-          <jps:RealtimeCallingPointsRequest>
-             <jps:origin>{origin}</jps:origin>
-             <jps:destination>{destination}</jps:destination>
-             <jps:departure>{dep_time}</jps:departure>
-             <jps:arrival>{arr_time}</jps:arrival>
-          </jps:RealtimeCallingPointsRequest>
+          <jps:RealtimeJourneyPlanRequest>
+
+             <jps:origin>
+                <com:stationCRS>{origin}</com:stationCRS>
+             </jps:origin>
+
+             <jps:destination>
+                <com:stationCRS>{destination}</com:stationCRS>
+             </jps:destination>
+
+             <jps:realtimeEnquiry>STANDARD</jps:realtimeEnquiry>
+
+             <jps:outwardTime>
+                <jps:departBy>{time}</jps:departBy>
+             </jps:outwardTime>
+
+             <jps:directTrains>false</jps:directTrains>
+
+          </jps:RealtimeJourneyPlanRequest>
        </soapenv:Body>
     </soapenv:Envelope>"""
 
-    response = requests.post(URL, data=soap, headers=HEADERS, auth=(USERNAME, PASSWORD))
-
-    if response.status_code != 200:
-        print("Calling points error:", response.text)
-        return None
+    response = requests.post(URL, data=soap_envelope, headers=HEADERS, auth=(USERNAME, PASSWORD))
 
     root = ET.fromstring(response.text)
     body = root.find('soap:Body', NS)
-    resp = body.find('.//jps:RealtimeCallingPointsResponse', NS)
+    jp = body.find('.//jps:RealtimeJourneyPlanResponse', NS)
 
-    if resp is None:
-        print("No calling points returned — likely wrong times.")
-        print(response.text)
-        return None
+    journeys = jp.findall('.//jps:outwardJourney', NS)
 
-    legs = resp.findall('.//jps:leg', NS)
-    calling_points = []
+    results = []
 
-    #For each station within the journey 
-    for leg in legs:
-        cps = leg.findall('.//jps:realtimeCallingPoint', NS)
-        for cp in cps:
-            calling_points.append({
-                "station": cp.findtext('jps:station', default='', namespaces=NS),
-                "platform": cp.findtext('jps:platform', default='', namespaces=NS),
-                "scheduled_arrival": cp.findtext('jps:timetable/jps:scheduledTimes/jps:arrival', default='', namespaces=NS),
-                "scheduled_departure": cp.findtext('jps:timetable/jps:scheduledTimes/jps:departure', default='', namespaces=NS),
-                "xml": cp
+    for j in journeys:
+
+        # Journey-level origin/destination
+        journey_origin = j.findtext('jps:origin', default='', namespaces=NS)
+        journey_dest = j.findtext('jps:destination', default='', namespaces=NS)
+
+        # Filter by destination input
+        if journey_dest.upper() != destination.upper():
+            continue
+
+        # Extract service bulletin description
+        bulletin = j.findtext('.//jps:serviceBulletins/com:description', default='', namespaces=NS)
+
+        legs = []
+
+        for leg in j.findall('.//jps:leg', NS):
+
+            mode = leg.findtext('jps:mode', default='', namespaces=NS)
+            board = leg.findtext('jps:board', default='', namespaces=NS)
+            alight = leg.findtext('jps:alight', default='', namespaces=NS)
+
+            sched_dep = leg.findtext('.//jps:scheduled/jps:departure', default='', namespaces=NS)
+            sched_arr = leg.findtext('.//jps:scheduled/jps:arrival', default='', namespaces=NS)
+
+            rt_dep = leg.findtext('.//jps:realtime/jps:departure', default='', namespaces=NS)
+            rt_arr = leg.findtext('.//jps:realtime/jps:arrival', default='', namespaces=NS)
+
+            operator = leg.findtext('.//com:name', default='', namespaces=NS)
+
+            legs.append({
+                "mode": mode,
+                "origin": board,
+                "destination": alight,
+                "scheduled_departure": sched_dep,
+                "scheduled_arrival": sched_arr,
+                "realtime_departure": rt_dep,
+                "realtime_arrival": rt_arr,
+                "operator": operator
             })
 
-    return calling_points
+        results.append({
+            "journey_origin": journey_origin,
+            "journey_destination": journey_dest,
+            "service_bulletin": bulletin,
+            "legs": legs
+        })
+
+    return results
+
 
 #Distruptions for a station
 def extract_origin_disruption(journey_xml):
-    scheduled_dep = journey_xml.findtext('jps:timetable/jps:scheduled/jps:departure', namespaces=NS)
-    realtime_dep = journey_xml.findtext('jps:timetable/jps:realtime/jps:departure', namespaces=NS)
+    # Helper: find first tag by local-name
+    def find_local(elem, name):
+        for child in elem.iter():
+            if child.tag.endswith(name):
+                return child.text.strip() if child.text else None
+        return None
 
-    cancelled = journey_xml.findtext('jps:cancelled', default='false', namespaces=NS)
-    cancel_reason = journey_xml.findtext('jps:cancellationReason', default='', namespaces=NS)
-    late_reason = journey_xml.findtext('jps:lateRunningReason', default='', namespaces=NS)
+    # Extract disruption fields
+    scheduled_dep = find_local(journey_xml, "departure")
+    realtime_dep = find_local(journey_xml, "realtime")
+    cancelled = find_local(journey_xml, "cancelled")
+    cancel_reason = find_local(journey_xml, "cancellationReason")
+    late_reason = find_local(journey_xml, "lateRunningReason")
 
-    bulletins = journey_xml.findall('.//com:serviceBulletin', NS)
+    # Extract service bulletins
+    bulletins = []
+    for child in journey_xml.iter():
+        if child.tag.endswith("serviceBulletin") and child.text:
+            bulletins.append(child.text.strip())
 
-    return {
+    disruption = {
         "scheduled_departure": scheduled_dep,
         "realtime_departure": realtime_dep,
-        "cancelled": cancelled,
+        "cancelled": cancelled == "true",
         "cancellation_reason": cancel_reason,
         "late_running_reason": late_reason,
-        "service_bulletins": [b.text for b in bulletins]
+        "service_bulletins": bulletins
     }
 
-#Get departures from Origin to Destination
-def get_departures(station_code, destination=None):
-    from_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+    # Debug print (clean)
+    print("\n===== Disruption Info =====")
+    for k, v in disruption.items():
+        print(f"{k}: {v}")
+    print("===========================\n")
 
-    soap_envelope = f"""<?xml version="1.0" encoding="UTF-8"?>
-    <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
-                      xmlns:jps="http://www.thalesgroup.com/ojp/jpservices"
-                      xmlns:com="http://www.thalesgroup.com/ojp/common">
-       <soapenv:Header/>
-       <soapenv:Body>
-          <jps:DepartureBoardRequest>
-             <jps:specifiedStation>
-                <jps:primaryStationCrs>{station_code}</jps:primaryStationCrs>
-             </jps:specifiedStation>
-             <jps:stoppingPattern>DEPART</jps:stoppingPattern>
-             <jps:fromTime>{from_time}</jps:fromTime>
-          </jps:DepartureBoardRequest>
-       </soapenv:Body>
-    </soapenv:Envelope>"""
+    return disruption
 
-    response = requests.post(URL, data=soap_envelope, headers=HEADERS, auth=(USERNAME, PASSWORD))
-
-    if response.status_code != 200:
-        raise RuntimeError(f"API error {response.status_code}: {response.text}")
-
-    root = ET.fromstring(response.text)
-    body = root.find('soap:Body', NS)
-    board = body.find('.//jps:DepartureBoardResponse', NS)
-
-    journeys = board.findall('.//jps:stationJourneyDetail', NS)
-
-    results = []
-
-    for j in journeys:
-        origin = j.findtext('com:originStation', default='', namespaces=NS)
-        dest = j.findtext('com:destinationStation', default='', namespaces=NS)
-
-        if destination and dest != destination:
-            continue
-
-        scheduled_dep = j.findtext('com:timetable/com:scheduled/com:departure', default='', namespaces=NS)
-        realtime_dep = j.findtext('com:timetable/com:realtime/com:departure', default='', namespaces=NS)
-
-        cancelled = j.findtext('com:cancelled', default='false', namespaces=NS)
-        cancel_reason = j.findtext('com:cancellationReason', default='', namespaces=NS)
-        late_reason = j.findtext('com:lateRunningReason', default='', namespaces=NS)
-
-        platform = j.findtext('com:platform', default='', namespaces=NS)
-
-        results.append({
-            "origin": origin,
-            "destination": dest,
-            "scheduled_departure": scheduled_dep,
-            "realtime_departure": realtime_dep,
-            "cancelled": cancelled == "true",
-            "cancellation_reason": cancel_reason,
-            "late_running_reason": late_reason,
-            "platform": platform
-        })
-
-    return results
-
-def get_ticket_prices_clean(origin_crs, destination_crs, depart_datetime, num_adults=0, num_children=0, fare_class="STANDARD"):
+def get_ticket_prices(origin_crs, destination_crs, depart_datetime, num_adults=0, num_children=0, fare_class="STANDARD"):
     soap = f"""<?xml version="1.0" encoding="UTF-8"?>
     <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
                       xmlns:jps="http://www.thalesgroup.com/ojp/jpservices"
@@ -290,21 +332,45 @@ def get_ticket_prices_clean(origin_crs, destination_crs, depart_datetime, num_ad
 
 
 
-
-now = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
-get_ticket_prices_clean("NRW", "LST", now, num_adults=1, num_children=0, fare_class="STANDARD")
-
-
-
-
-
 #Test Usage:
 
 #Departures
-# departures = get_departures("RDG", destination="PAD")
-# for d in departures:
+#  time =  datetime.now().replace(hour=20, minute=0, second=0, microsecond=0).strftime("%Y-%m-%dT%H:%M:%S")
+#  departures = get_departures("COL", destination="lST", from_time=time)
+ 
+#  for d in departures:
 #     print(d)
 
-#Calling points inbetween origin and destination
-# calling_points = get_calling_points("NRW", "COL", "2026-06-01T15:30:00", "2026-06-01T16:28:00")
-# print(calling_points)  
+#Ticket prices 
+# now = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+# get_ticket_prices("NRW", "LST", now, num_adults=1, num_children=0, fare_class="STANDARD")
+
+    # deps = get_departures("NRW", destination="LST")
+
+    # if deps:
+    #     journey_xml = deps[0]["xml"]
+    #     extract_origin_disruption(journey_xml)
+    # else:
+    #     print("No departures found.")
+
+
+#Journey info with legs 
+# time = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+# journeys = journey_plan("WSB", "PAD", time)
+
+# for j in journeys:
+#     print(f"\nJourney {j['journey_origin']} → {j['journey_destination']}")
+
+#     if j["service_bulletin"]:
+#         print("  ⚠ " + j["service_bulletin"])
+
+#     for leg in j["legs"]:
+#         dep = leg["realtime_departure"] or leg["scheduled_departure"]
+#         arr = leg["realtime_arrival"] or leg["scheduled_arrival"]
+
+#         print(
+#             f"  {leg['mode']:<16} "
+#             f"{leg['origin']} → {leg['destination']}  "
+#             f"{dep} → {arr}  "
+#             f"({leg['operator']})"
+#         )

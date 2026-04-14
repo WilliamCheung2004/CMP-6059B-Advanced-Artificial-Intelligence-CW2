@@ -1,5 +1,4 @@
 from genericpath import exists
-
 import pandas as pd
 import sklearn
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -26,6 +25,17 @@ def train():
     joblib.dump(vectorizer, 'models/vectorizer.joblib')
     joblib.dump(model, 'models/intent_model.joblib')
 
+def classify_intent(text, vectorizer=None, model=None):
+    
+    if vectorizer is None or model is None:
+        vectorizer = joblib.load('models/vectorizer.joblib')
+        model = joblib.load('models/intent_model.joblib')
+
+    X = vectorizer.transform([text])
+    predicted_intent = model.predict(X)[0]
+    confidence = model.predict_proba(X).max()
+    return predicted_intent, confidence
+
 
 if __name__ == '__main__':
     #Make sure models exist if not train them
@@ -36,13 +46,3 @@ if __name__ == '__main__':
     else:
         vectorizer = joblib.load('models/vectorizer.joblib')
         model = joblib.load('models/intent_model.joblib')
-
-        X_test = vectorizer.transform([" book ."])
-        predicted_intent = model.predict(X_test)[0]
-        probability = model.predict_proba(X_test).max()
-        best_guess = model.predict(X_test)[0]
-
-        if probability < 0.5:
-            print(f"Do you want to {predicted_intent}?")
-        print(f"Predicted Intent: {predicted_intent} (Confidence: {probability:.2f})")
-
