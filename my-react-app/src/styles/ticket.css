@@ -1,22 +1,20 @@
 .ticketList {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    margin-top: 16px;
+    gap: clamp(0.625rem, 2vw, 0.75rem);
+    margin-top: clamp(0.75rem, 2.5vw, 1rem);
     width: 100%;
 }
 
 .ticketCard {
     background: #FFFFFF;
-    border-radius: 16px;
-    padding: 16px 18px;
+    border-radius: clamp(0.75rem, 2.5vw, 1rem);
+    padding: clamp(0.75rem, 2.5vw, 1rem) clamp(0.875rem, 3vw, 1.125rem);
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
     border: 1px solid #E0E9F5;
-    position: relative;
     transition: transform 0.1s ease;
     width: 100%;
     box-sizing: border-box;
-    max-width: 100%;
 }
 
 .ticketCard:hover {
@@ -28,25 +26,25 @@
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: clamp(0.25rem, 1vw, 0.375rem);
     font-weight: 700;
-    font-size: 15px;
+    font-size: clamp(0.8125rem, 2.5vw, 0.9375rem);
     color: #042C53;
-    margin-bottom: 6px;
+    margin-bottom: clamp(0.25rem, 1vw, 0.375rem);
 }
 
 .arrow {
     color: #7A9BC2;
-    font-size: 15px;
+    font-size: clamp(0.8125rem, 2.5vw, 0.9375rem);
 }
 
 .ticketTime {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 12px;
-    margin-bottom: 12px;
-    font-size: 14px;
+    gap: clamp(0.5rem, 2vw, 0.75rem);
+    margin-bottom: clamp(0.5rem, 2vw, 0.75rem);
+    font-size: clamp(0.75rem, 2.2vw, 0.875rem);
 }
 
 .departureTime {
@@ -56,7 +54,7 @@
 
 .changes {
     color: #6B7F99;
-    font-size: 13px;
+    font-size: clamp(0.6875rem, 2vw, 0.8125rem);
 }
 
 .ticketFooter {
@@ -64,17 +62,17 @@
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: clamp(0.5rem, 1.5vw, 0.625rem);
 }
 
-.price-wrapper{
+.price-wrapper {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: clamp(0.375rem, 1.5vw, 0.5rem);
 }
 
 .price {
-    font-size: 20px;
+    font-size: clamp(1rem, 3.5vw, 1.25rem);
     font-weight: 800;
     color: #042C53;
 }
@@ -83,14 +81,14 @@
     background: #165086;
     color: white;
     text-decoration: none;
-    padding: 8px 18px;
-    border-radius: 40px;
+    padding: clamp(0.375rem, 1.5vw, 0.5rem) clamp(0.875rem, 3vw, 1.125rem);
+    border-radius: clamp(1.25rem, 4vw, 2.5rem);
     font-weight: 600;
-    font-size: 14px;
+    font-size: clamp(0.75rem, 2.2vw, 0.875rem);
     transition: background 0.2s;
     border: none;
     cursor: pointer;
-    white-space:nowrap;
+    white-space: nowrap;
 }
 
 .bookButton:hover {
@@ -98,11 +96,11 @@
 }
 
 .badge {
-    background: #2E7D32;        
+    background: #2E7D32;
     color: white;
     font-weight: 700;
-    font-size: 11px;
-    padding: 3px 8px;
+    font-size: clamp(0.5625rem, 1.8vw, 0.6875rem);
+    padding: clamp(0.125rem, 0.5vw, 0.1875rem) clamp(0.375rem, 1.5vw, 0.5rem);
     border-radius: 30px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -117,3 +115,12 @@
     background: #1565C0;
 }
 
+@media (max-width: 480px) {
+    .bookButton {
+        white-space: normal;
+    }
+
+    .badge {
+        white-space: normal;
+    }
+}

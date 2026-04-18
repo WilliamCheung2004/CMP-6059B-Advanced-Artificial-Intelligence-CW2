@@ -25,9 +25,9 @@ export default function TickerCard({ ticket }) {
                     <span className="price">£{ticket.price.toFixed(2)}</span>
                     {badge && <span className={`badge ${badge.toLowerCase()}`}>{badge}</span>}
                 </div>
-                <a 
-                    href={ticket.bookingUrl || "#"} 
-                    target="_blank" 
+                <a
+                    href={ticket.bookingUrl || "#"}
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="bookButton"
                 >

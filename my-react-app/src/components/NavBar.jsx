@@ -8,7 +8,7 @@ export default function Navbar({ goChat }) {
             </div>
 
             <div className="navRight">
-                 <button className="chatBtn" onClick={goChat}>
+                <button className="chatBtn" onClick={goChat}>
                     Chat
                 </button>
                 <button className="helpBtn">
