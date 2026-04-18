@@ -197,7 +197,7 @@ def assign_route(message, stations):
 
 
 # Extract entities like date, origin, destination from the message
-def extract_entities(message: str) -> dict:
+def     extract_entities(message: str) -> dict:
     doc = nlp(message)
     entities = {}
 
