@@ -4,7 +4,7 @@ export default function ChatInput({ sendMessage }) {
     const [text, setText] = useState("")
 
     function handleSend() {
-        if (!text.trim()) return 
+        if (!text.trim()) return
         sendMessage(text)
         setText("")
     }
