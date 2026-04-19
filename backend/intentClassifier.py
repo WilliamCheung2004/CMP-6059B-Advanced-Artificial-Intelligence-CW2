@@ -21,7 +21,7 @@ def train():
     model = LogisticRegression(max_iter=1000)
     model.fit(X, intents)
 
-#save in /models folder
+    #save in /models folder
     joblib.dump(vectorizer, 'models/vectorizer.joblib')
     joblib.dump(model, 'models/intent_model.joblib')
 
@@ -40,9 +40,28 @@ def classify_intent(text, vectorizer=None, model=None):
 if __name__ == '__main__':
     #Make sure models exist if not train them
     if not os.path.exists('models/vectorizer.joblib') or not os.path.exists('models/intent_model.joblib'):
+        print("Couldn't find models, training...")
         train()
 
     #Use models
     else:
+        print("Models found, testing classification...")
         vectorizer = joblib.load('models/vectorizer.joblib')
         model = joblib.load('models/intent_model.joblib')
+        # Test classification
+        test_texts = [
+            "I want to book a ticket from Norwich to London tomorrow",
+            "Find me a ticket 24/10/2026",
+            "I want to travel on Friday",
+            "I want to travel next Friday",
+            "I want to travel on the 5th",
+            "I want to travel on 24th January",
+            "I want to travel yesterday",
+            "Can I get a ticket from Colchester to Norwich on the 25th March?",
+        ]
+
+        for text in test_texts:
+            intent, confidence = classify_intent(text, vectorizer, model)
+            print(f"Text: '{text}'")
+            print(f"  Predicted Intent: {intent} (Confidence: {confidence:.2f})")
+            print()

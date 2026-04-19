@@ -1,210 +1,230 @@
 ﻿Text,Intent
-hello,greeting
-hi,greeting
-hey,greeting
-good morning,greeting
-good afternoon,greeting
-good evening,greeting
-hi there,greeting
-hey there,greeting
-hello there,greeting
-morning,greeting
-afternoon,greeting
-evening,greeting
-yo,greeting
-hiya,greeting
-greetings,greeting
-sup,greeting
-what's up,greeting
-hey bot,greeting
-hello mate,greeting
-hi buddy,greeting
-hi mate,greeting
-bye,goodbye
-goodbye,goodbye
-see you,goodbye
-see you later,goodbye
-farewell,goodbye
-thanks bye,goodbye
-thank you goodbye,goodbye
-exit,goodbye
-quit,goodbye
-stop,goodbye
-that's all,goodbye
-i'm done,goodbye
-finished,goodbye
-end chat,goodbye
-close,goodbye
-talk later,goodbye
-catch you later,goodbye
-bye bye,goodbye
-thanks that's all,goodbye
-ok bye,goodbye
-cya,goodbye
-help,help
-can you help me,help
-i need help,help
-what can you do,help
-how does this work,help
-options,help
-show me options,help
-what are my choices,help
-i'm confused,help
-assist me,help
-support please,help
-what services do you offer,help
-what can i ask,help
-how do i use this,help
-guide me,help
-menu,help
-help me out,help
-what is this,help
-explain,help
-instructions,help
-?,help
-book a ticket,find_ticket
-buy a train ticket,find_ticket
-get me a ticket,find_ticket
-find me a ticket,find_ticket
-search for trains,find_ticket
-i need a ticket,find_ticket
-i want to travel,find_ticket
-cheap ticket to london,find_ticket
-what is the fare to manchester,find_ticket
-how much is a ticket to leeds,find_ticket
-are there trains to oxford,find_ticket
-find trains from norwich to london,find_ticket
-i want to go to cambridge,find_ticket
-tickets for tomorrow,find_ticket
-any trains available,find_ticket
-can you book a train,find_ticket
-i need a cheap fare,find_ticket
-look up train tickets,find_ticket
-show me train options,find_ticket
-i want to book travel,find_ticket
-journey time,journey_time
-when is the next train,journey_time
-what time does it leave,journey_time
-train schedule,journey_time
-next train to london,journey_time
-what time is departure,journey_time
-when does it depart,journey_time
-departure time,journey_time
-arrival time,journey_time
-how long is the journey,journey_time
-duration of trip,journey_time
-when is the last train,journey_time
-earliest train,journey_time
-latest train,journey_time
-train timetable,journey_time
-schedule for trains,journey_time
-when does the train arrive,journey_time
-what time will it get there,journey_time
-time of next train,journey_time
-when can i travel,journey_time
-next departure,journey_time
-current delay,delay_info
-is my train delayed,delay_info
-train running late,delay_info
-any delays,delay_info
-is there a delay,delay_info
-train cancelled,delay_info
-is it cancelled,delay_info
-disruption on the line,delay_info
-is my train on time,delay_info
-train status delay,delay_info
-is it running late,delay_info
-any cancellations,delay_info
-check delays,delay_info
-delay status,delay_info
-is service disrupted,delay_info
-late train info,delay_info
-has it been cancelled,delay_info
-is there disruption,delay_info
-train problems,delay_info
-delay update,delay_info
-service delay,delay_info
-platform,platform_info
-what platform is it,platform_info
-which platform,platform_info
-platform number,platform_info
-where is the train,platform_info
-which platform does it leave from,platform_info
-platform for train,platform_info
-where do i go,platform_info
-train platform info,platform_info
-what stand,platform_info
-what bay,platform_info
-which platform is the train on,platform_info
-platform details,platform_info
-where is departure,platform_info
-what platform for london train,platform_info
-tell me the platform,platform_info
-platform please,platform_info
-where is my train,platform_info
-platform location,platform_info
-departure platform,platform_info
-station platform info,platform_info
-train check,live_status
-live train status,live_status
-real time update,live_status
-current train status,live_status
-status now,live_status
-train running status,live_status
-live update,live_status
-what's happening now,live_status
-current situation,live_status
-is it running now,live_status
-status today,live_status
-status tonight,live_status
-live info,live_status
-train update,live_status
-real time info,live_status
-current update,live_status
-train now,live_status
-what is happening,live_status
-current train info,live_status
-live train info,live_status
-status check,live_status
-reserved seating,seat_info
-seat reservation,seat_info
-can i reserve a seat,seat_info
-is there a quiet coach,seat_info
-first class seats,seat_info
-standard class,seat_info
-seat availability,seat_info
-coach information,seat_info
-quiet carriage,seat_info
-bike space,seat_info
-wheelchair access,seat_info
-accessible seating,seat_info
-seat booking,seat_info
-do i need a reservation,seat_info
-seat options,seat_info
-coach details,seat_info
-is there first class,seat_info
-where can i sit,seat_info
-reserved seating,seat_info
-train seating,seat_info
-seat info,seat_info
-refubd,refund_info
-refund my ticket,refund_info
-can i get a refund,refund_info
-ticket refund,refund_info
-cancel my ticket,refund_info
-exchange ticket,refund_info
-change my ticket,refund_info
-money back,refund_info
-compensation for delay,refund_info
-refund policy,refund_info
-how to get refund,refund_info
-cancel booking,refund_info
-refund request,refund_info
-ticket cancellation,refund_info
-can i change my booking,refund_info
-refund details,refund_info
-claim compensation,refund_info
-get my money back,refund_info
-refund process,refund_info
-ticket changes,refund_info
-modify ticket,refund_info
+"hi",greeting
+"hello",greeting
+"hey",greeting
+"hiya",greeting
+"yo",greeting
+"good morning",greeting
+"good afternoon",greeting
+"good evening",greeting
+"hi there",greeting
+"hello there",greeting
+"hey there",greeting
+"morning",greeting
+"afternoon",greeting
+"evening",greeting
+"hi, how are you",greeting
+"hello, can you help me",greeting
+"good morning, I have a question",greeting
+"hey, just saying hi",greeting
+"hiya, what can you do",greeting
+"hello mate",greeting
+"hi buddy",greeting
+"hi mate",greeting
+"bye",goodbye
+"goodbye",goodbye
+"see you",goodbye
+"see you later",goodbye
+"farewell",goodbye
+"thanks bye",goodbye
+"thank you goodbye",goodbye
+"exit",goodbye
+"quit",goodbye
+"stop",goodbye
+"that's all",goodbye
+"i'm done",goodbye
+"finished",goodbye
+"end chat",goodbye
+"close",goodbye
+"talk later",goodbye
+"catch you later",goodbye
+"bye bye",goodbye
+"ok bye",goodbye
+"cya",goodbye
+"help",help
+"can you help me",help
+"i need help",help
+"what can you do",help
+"how does this work",help
+"options",help
+"show me options",help
+"what are my choices",help
+"i'm confused",help
+"assist me",help
+"support please",help
+"what services do you offer",help
+"what can i ask",help
+"how do i use this",help
+"guide me",help
+"menu",help
+"help me out",help
+"what is this",help
+"explain",help
+"instructions",help
+"?",help
+"hello, I need help with trains",help
+"hi, what can you do for me",help
+"book a ticket",find_ticket
+"buy a train ticket",find_ticket
+"get me a ticket",find_ticket
+"find me a ticket",find_ticket
+"search for trains",find_ticket
+"i need a ticket",find_ticket
+"cheap ticket to london",find_ticket
+"what is the fare to manchester",find_ticket
+"how much is a ticket to leeds",find_ticket
+"are there trains to oxford",find_ticket
+"find trains from norwich to london",find_ticket
+"i want to book travel",find_ticket
+"tickets for tomorrow",find_ticket
+"any trains available",find_ticket
+"can you book a train",find_ticket
+"i need a cheap fare",find_ticket
+"look up train tickets",find_ticket
+"show me train options",find_ticket
+"i want to book a ticket from norwich to london tomorrow",find_ticket
+"i want to buy a ticket for next friday",find_ticket
+"can you help me book a train to cambridge",find_ticket
+"journey time",journey_time
+"when is the next train",journey_time
+"what time does it leave",journey_time
+"train schedule",journey_time
+"next train to london",journey_time
+"what time is departure",journey_time
+"when does it depart",journey_time
+"departure time",journey_time
+"arrival time",journey_time
+"how long is the journey",journey_time
+"duration of trip",journey_time
+"when is the last train",journey_time
+"earliest train",journey_time
+"latest train",journey_time
+"train timetable",journey_time
+"schedule for trains",journey_time
+"when does the train arrive",journey_time
+"what time will it get there",journey_time
+"time of next train",journey_time
+"how long does it take from london to manchester",journey_time
+"what’s the travel time between norwich and cambridge",journey_time
+"how many hours is the trip",journey_time
+"current delay",delay_info
+"is my train delayed",delay_info
+"train running late",delay_info
+"any delays",delay_info
+"is there a delay",delay_info
+"train cancelled",delay_info
+"is it cancelled",delay_info
+"disruption on the line",delay_info
+"is my train on time",delay_info
+"train status delay",delay_info
+"is it running late",delay_info
+"any cancellations",delay_info
+"check delays",delay_info
+"delay status",delay_info
+"is service disrupted",delay_info
+"late train info",delay_info
+"has it been cancelled",delay_info
+"is there disruption",delay_info
+"train problems",delay_info
+"delay update",delay_info
+"service delay",delay_info
+"is the train from norwich to london delayed today",delay_info
+"what’s the current delay on the cambridge line",delay_info
+"is my train running late right now",delay_info
+"platform",platform_info
+"what platform is it",platform_info
+"which platform",platform_info
+"platform number",platform_info
+"where is the train",platform_info
+"which platform does it leave from",platform_info
+"platform for train",platform_info
+"where do i go",platform_info
+"train platform info",platform_info
+"what stand",platform_info
+"what bay",platform_info
+"which platform is the train on",platform_info
+"platform details",platform_info
+"where is departure",platform_info
+"what platform for london train",platform_info
+"tell me the platform",platform_info
+"platform please",platform_info
+"where is my train",platform_info
+"platform location",platform_info
+"departure platform",platform_info
+"train check",live_status
+"live train status",live_status
+"real time update",live_status
+"current train status",live_status
+"status now",live_status
+"train running status",live_status
+"live update",live_status
+"what's happening now",live_status
+"current situation",live_status
+"is it running now",live_status
+"status today",live_status
+"status tonight",live_status
+"live info",live_status
+"train update",live_status
+"real time info",live_status
+"current update",live_status
+"train now",live_status
+"what is happening",live_status
+"current train info",live_status
+"live train info",live_status
+"status check",live_status
+"reserved seating",seat_info
+"seat reservation",seat_info
+"can i reserve a seat",seat_info
+"is there a quiet coach",seat_info
+"first class seats",seat_info
+"standard class",seat_info
+"seat availability",seat_info
+"coach information",seat_info
+"quiet carriage",seat_info
+"bike space",seat_info
+"wheelchair access",seat_info
+"accessible seating",seat_info
+"seat booking",seat_info
+"do i need a reservation",seat_info
+"seat options",seat_info
+"coach details",seat_info
+"is there first class",seat_info
+"where can i sit",seat_info
+"train seating",seat_info
+"seat info",seat_info
+"refund my ticket",refund_info
+"can i get a refund",refund_info
+"ticket refund",refund_info
+"cancel my ticket",refund_info
+"exchange ticket",refund_info
+"change my ticket",refund_info
+"money back",refund_info
+"compensation for delay",refund_info
+"refund policy",refund_info
+"how to get refund",refund_info
+"cancel booking",refund_info
+"refund request",refund_info
+"ticket cancellation",refund_info
+"can i change my booking",refund_info
+"refund details",refund_info
+"claim compensation",refund_info
+"get my money back",refund_info
+"refund process",refund_info
+"ticket changes",refund_info
+"modify ticket",refund_info
+"my train was delayed, can I get compensation",refund_info
+"how do I claim a refund for a cancelled train",refund_info
+"can I get my money back for a delay",refund_info
+"I want to book a hotel",unknown
+"what’s the weather like today",unknown
+"can you help me with my car",unknown
+"I want to travel but not by train",unknown
+"I want to travel abroad",unknown
+"I want to travel next year",unknown
+"I want to travel but I’m not booking anything yet",unknown
+"what time is it",unknown
+"tell me a joke",unknown
+"what’s your name",unknown
+"how old are you",unknown
+"play music",unknown
+"open google",unknown
