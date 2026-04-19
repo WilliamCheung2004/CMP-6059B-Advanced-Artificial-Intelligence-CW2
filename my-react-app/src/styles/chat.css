@@ -140,6 +140,7 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.3);
     flex-shrink: 0;
+    position: relative;
 }
 
 .chatInput input {
@@ -223,7 +224,45 @@
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
+.charCounter {
+    font-size: 12px;
+    color: #7A9BC2;
+    margin-right: 4px;
+}
 
+.charCounter.warning {
+    color: #FF8C42;
+    font-weight:600;
+}
+
+.calendarWrapper {
+    position: absolute;
+    bottom: 70px;
+    left: 0;
+    z-index: 1000;
+    background: #FFFFFF;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.calendarWrapper .react-datepicker__header {
+    background-color: #165086;
+    border-radius: 16px 16px 0 0;
+    padding-top: 12px;
+}
+
+.calendarWrapper .react-datepicker__current-month,
+.calendarWrapper .react-datepicker__day-name {
+    color: white;
+}
+
+.calendarWrapper .react-datepicker__day--selected {
+    background-color: #165086;
+}
+
+.calendarWrapper .react-datepicker__day:hover {
+    background-color: #E8F0FE;
+}
 
 @media (max-width: 480px) {
     .message {
@@ -267,6 +306,7 @@
     .chatInput {
         margin-top: 0.75rem;
         padding: 0.1875rem 0.1875rem 0.1875rem 0.75rem;
+        position: relative;
     }
 
     .chatInput input {
@@ -282,6 +322,12 @@
 
     .iconBtn {
         font-size: 1.125rem;
+    }
+
+        .calendarWrapper {
+        bottom: 60px;
+        left: 50%;
+        transform: translateX(-50%);
     }
 }
 
