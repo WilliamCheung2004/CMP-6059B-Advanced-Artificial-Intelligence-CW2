@@ -68,7 +68,7 @@ INTENTS = {
     'plan_journey': [
         'travel', 'journey', 'trip', 'route', 'go', 'get to', 'from',
         'depart', 'departure', 'arrive', 'arrival', 'via', 'direct',
-        'connection', 'change', 'train', 'plan'
+        'connection', 'change', 'plan'
     ],
 
     'journey_time': [

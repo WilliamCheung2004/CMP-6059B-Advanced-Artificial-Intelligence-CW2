@@ -1,6 +1,8 @@
-from intent import detect_intent, extract_entities
+from intent import detect_intent, detect_primary_intent, extract_entities
+from intentClassifier import classify_intent
 from expertSystem import TrainChatbot, Journey, TicketPreference
-from database import (init_db, save_message, save_journey)
+from database import init_db, save_message, save_journey
+from knowledge_base import get_faq, get_rule
 
 #global session state
 SESSION_ID = "session1"
@@ -11,6 +13,12 @@ conversation_state = {
     "awaiting_preference": False   # True once all slots filled, waiting for ticket choice
 }
 
+INTENT_TO_FAQ_KEY = {
+    "refund_info": "refund",
+    "seat_info": "luggage",
+    "journey_time": "peak",
+    "delay_info": "refund",  # placeholder until you add delay_repay to KB
+}
 
 #save journey (only when all 3 fields present)
 def safe_save_journey(entities):
@@ -32,7 +40,7 @@ def reset_state():
 import io
 import sys
 
-def run_expert_system(user_input, entities, preference=None):
+def run_expert_system(entities, preference=None):
     engine = TrainChatbot()
     engine.reset()
 
@@ -100,7 +108,7 @@ def process_user_input(user_input):
             return "Please say cheapest, quickest, or any."
 
         conversation_state["awaiting_preference"] = False
-        response = run_expert_system(user_input, entities, preference=preference)
+        response = run_expert_system(entities, preference=preference)
         save_message(SESSION_ID, user_input, response, "ticket_selected")
         reset_state()
         return response + "\n\nIf you want to plan another journey, just let me know!"
@@ -128,15 +136,33 @@ def process_user_input(user_input):
         # All slots now filled — ask for preference via expert system
         safe_save_journey(entities)
         conversation_state["awaiting_preference"] = True
-        response = run_expert_system(user_input, entities, preference=None)
+        response = run_expert_system(entities, preference=None)
         save_message(SESSION_ID, user_input, response, "ask_preference")
         return response
 
     # =========================================================
     # STEP 3: Normal flow — extract entities from opening message
     # =========================================================
-    intents = detect_intent(user_input)
-    intent = intents[0] if intents else "unknown"
+    rule_intent = detect_primary_intent(user_input)
+
+    ml_intent, ml_conf = classify_intent(user_input)
+
+    if rule_intent != "unknown":
+        intent = rule_intent
+    elif ml_conf >= 0.55:
+        intent = ml_intent
+    else:
+        intent = "unknown"
+    
+    kb_key = INTENT_TO_FAQ_KEY.get(intent, intent)
+    kb_response = get_faq(user_input) or get_faq(kb_key) or get_rule(kb_key)
+    if kb_response and intent not in ("find_ticket", "plan_journey"):
+        save_message(SESSION_ID, user_input, kb_response, intent)
+        return kb_response
+    elif intent == "unknown":
+        fallback = "Sorry, I didn't quite understand that. You can ask me about railcards, refunds, luggage, peak times, or say 'get a ticket' to start booking."
+        save_message(SESSION_ID, user_input, fallback, intent)
+        return fallback
 
     new_entities = extract_entities(user_input)
     for key in ("origin", "destination", "date"):
@@ -151,7 +177,7 @@ def process_user_input(user_input):
     #all slots filled from the opening message
     safe_save_journey(entities)
     conversation_state["awaiting_preference"] = True
-    response = run_expert_system(user_input, entities, preference=None)
+    response = run_expert_system(entities, preference=None)
     save_message(SESSION_ID, user_input, response, intent)
     return response
 

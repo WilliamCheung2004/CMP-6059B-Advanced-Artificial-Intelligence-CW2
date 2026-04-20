@@ -5,7 +5,11 @@
         "railcard": "A railcard gives you 1/3 off most rail fares. Popular ones include 16-25, 26-30, and Two Together railcards.",
         "refund": "You can refund an unused ticket before departure. Advance tickets are usually non-refundable.",
         "luggage": "Most train services allow 2 pieces of hand luggage at no extra cost.",
-        "peak": "Peak times are typically 7-9am and 4-7pm on weekdays. Off-peak tickets are cheaper outside these times."
+        "peak": "Peak times are typically 7-9am and 4-7pm on weekdays. Off-peak tickets are cheaper outside these times.",
+        "delay": "If your train is delayed by 15+ minutes you may be entitled to Delay Repay compensation. Check your train operator's website to claim.",
+        "seat": "Most trains have standard and first class seating. Quiet coaches are available on many long-distance services. Reservations are free on some routes.",
+        "platform": "Platform information is usually displayed on departure boards at the station around 20 minutes before departure.",
+        "live": "For live train running information, check National Rail at nationalrail.co.uk or your train operator's app."
     },
 
     "rules": {
