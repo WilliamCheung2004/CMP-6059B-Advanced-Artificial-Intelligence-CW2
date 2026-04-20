@@ -38,7 +38,7 @@ class TrainChatbot(KnowledgeEngine):
         else:
             selected = tickets[1]  # Off-Peak default
 
-        self.modify(journey, price=selected["price"])
+        self.modify(journey, price=float(selected["price"]))
         print(f"\nSelected ticket:")
         print(f"  Type: {selected['type']}")
         print(f"  Price: £{selected['price']}")
@@ -51,7 +51,7 @@ class TrainChatbot(KnowledgeEngine):
         print(f"You want to travel from {o} to {d} on {dt}.")
         print("Do you want the cheapest, quickest, or any ticket?")
 
-    @Rule(AS.journey << Journey(origin=MATCH.o, destination=MATCH.d, date=MATCH.dt),
+    @Rule(AS.journey << Journey(origin=MATCH.o, destination=MATCH.d, date=MATCH.dt, price=None),
           TicketPreference(type=MATCH.pref))
     def choose_ticket(self, journey, pref):
         self.set_ticket_details(journey, pref)

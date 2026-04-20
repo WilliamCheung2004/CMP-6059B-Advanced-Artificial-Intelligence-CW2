@@ -86,6 +86,19 @@ def get_conversation_history(session_id: str) -> list:
     
     return history
 
+#for testing purposes - delete all conversation history for a given session ID
+def delete_conversation_history(session_id: str):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        DELETE FROM conversations
+        WHERE session_id = ?
+    ''', (session_id,))
+    
+    conn.commit()
+    conn.close()
+
 if __name__ == '__main__':
     init_db()
     print("\nDatabase initialised!\n")
@@ -95,8 +108,16 @@ if __name__ == '__main__':
     save_message('session123', 'My train is delayed, what are my options?', 'If your train is delayed, you can claim compensation or rebook on a later train.', 'delay_query')
     save_journey('session123', 'Cambridge', 'Norwich', '2024-07-01', '2024-07-02', 'return')
     
+    print("----- Conversation history for session123: ------\n")
     conv_history = get_conversation_history('session123')
-    
-    print("Conversation history for session123:\n")
     for msg in conv_history:
-        print(f"User: {msg[0]}\nBot: {msg[1]}\nIntent: {msg[2]}\nTimestamp: {msg[3]}\n")
+        print(f"User input: {msg[0]}\nBot output: {msg[1]}\nIntent: {msg[2]}\nTimestamp: {msg[3]}\n")
+        
+    print("----- Conversation history for session1: ------\n")
+    conv_history = get_conversation_history('session1')
+    for msg in conv_history:
+        print(f"User input: {msg[0]}\nBot output: {msg[1]}\nIntent: {msg[2]}\nTimestamp: {msg[3]}\n")
+        
+    # #test deleting conversation history
+    # delete_conversation_history('session1')
+    # print("Deleted conversation history for session1.\n")
