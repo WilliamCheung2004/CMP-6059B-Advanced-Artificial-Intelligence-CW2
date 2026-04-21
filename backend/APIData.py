@@ -5,6 +5,7 @@ import os
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from dotenv import load_dotenv
+from datetime import datetime
 
 # Load env
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -200,16 +201,56 @@ def get_ticket_prices(origin_crs, destination_crs, depart_datetime, num_adults=0
 
     return results
 
+def print_journey_details(origin_crs, destination_crs, depart_datetime):
+
+
+    journeys = journey_plan(origin_crs, destination_crs, depart_datetime)
+
+    if not journeys:
+        print("No journeys found.")
+        return []
+
+    # for j in journeys:
+    #     print(f"\nJourney {j['journey_origin']} → {j['journey_destination']}")
+
+    #     if j["service_bulletin"]:
+    #         print("  ⚠ " + j["service_bulletin"])
+
+    #     for leg in j["legs"]:
+    #         dep = leg["realtime_departure"] or leg["scheduled_departure"]
+    #         arr = leg["realtime_arrival"] or leg["scheduled_arrival"]
+
+    #         print(
+    #             f"  {leg['mode']:<16} "
+    #             f"{leg['origin']} → {leg['destination']}  "
+    #             f"{dep} → {arr}  "
+    #             f"({leg['operator']})"
+    #         )
+
+    # print("\n")  # spacing
+    return journeys
+
+def get_timestamp(date_str, time_str):
+    if not date_str or not time_str:
+        return None
+    try:
+        dt = datetime.strptime(f"{date_str} {time_str}", "%d/%m/%Y %H:%M")
+        return dt.strftime("%Y-%m-%dT%H:%M:%S")
+    except:
+        return None
+
+
 
 
 #Test Usage:
 
 #Ticket prices 
-
 # now = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
 # get_ticket_prices("NRW", "LST", now, num_adults=1, num_children=0, fare_class="STANDARD")
 
 
+# now = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+# print_journey_details("NRW", "LST", now)
 
 #Journey info with legs 
 
