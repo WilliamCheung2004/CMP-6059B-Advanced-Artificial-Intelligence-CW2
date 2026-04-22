@@ -1,3 +1,5 @@
+#delayModel.py - trains a model to predict arrival delay at London Waterloo based on historical data
+
 #some dependencies may need to be installed via pip:
 #pip install openpyxl
 

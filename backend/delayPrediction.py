@@ -1,3 +1,5 @@
+#delayPrediction.py - loads the trained delay prediction model and provides a function to predict arrival delay at London Waterloo based on current journey info
+
 import joblib
 import pandas as pd
 import os

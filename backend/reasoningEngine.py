@@ -2,10 +2,12 @@
 
 import requests
 from intentClassifier import classify_intent 
-from intent import detect_primary_intent, extract_entities, find_stations, get_station_code, extract_time_semantic, detect_intent
+from intent import detect_primary_intent, extract_entities, find_stations, extract_time_semantic, detect_intent
 from APIData import print_journey_details,get_ticket_prices,get_timestamp
 import json
 from knowledge_base import get_faq, get_booking_rule, get_station_code, KB
+from delayPrediction import predict_arrival_delay
+import re
 
 confidence_threshold = 0.6
 
@@ -26,6 +28,13 @@ conversation_state = {
     "entities": {},
     "awaiting_next_action": False,
     "asking_for": None  
+}
+
+delay_state = {
+    "current_station": None,
+    "current_delay": None,
+    "destination": None,
+    "asking_for": None
 }
 
 REQUIRED_FIELDS = ["origin", "destination", "date", "time"]
@@ -99,6 +108,76 @@ def handle_knowledge_query(user_input: str, intent: str) -> str:
 
     #fall back to LLM if KB has nothing
     return chatbot([{"role": "user", "content": user_input}]) or "Sorry, I don't have an answer for that right now."
+
+def reset_delay_state():
+    delay_state["current_station"] = None
+    delay_state["current_delay"] = None
+    delay_state["destination"] = None
+    delay_state["asking_for"] = None
+    
+def is_delay_prediction_request(user_input: str) -> bool:
+    triggers = [
+        "my train is delayed", "train is running late", "delayed by",
+        "minutes late", "minutes delayed", "predict", "arrive at waterloo",
+        "when will it arrive", "i am on a train", "on the train"
+    ]
+    return any(t in user_input.lower() for t in triggers)
+
+def handle_delay_prediction(user_input: str) -> str:
+    text = user_input.lower()
+    
+    #try to extract current station
+    if delay_state["current_station"] is None:
+        stations = find_stations(user_input)
+        if stations:
+            code = get_station_code(stations[0])
+            if code:
+                delay_state["current_station"] = code
+                
+    #then try to extract current delay in minutes
+    elif delay_state["current_delay"] is None:
+        match = re.search(r"(\d+)\s*(min|minute|minutes)?", text)
+        if match:
+            delay_state["current_delay"] = int(match.group(1))
+                
+    #then try to extract destination
+    elif delay_state["destination"] is None:
+        stations = find_stations(user_input)
+        if stations and delay_state["current_station"] is not None:
+            #avoid overwriting current_station with destination
+            for s in stations:
+                code = get_station_code(s)
+                if code and code != delay_state["current_station"]:
+                    delay_state["destination"] = code
+                    break
+
+    #ask for missing info step by step
+    if delay_state["current_station"] is None:
+        delay_state["asking_for"] = "current_station"
+        return "Which station are you currently at?"
+
+    if delay_state["current_delay"] is None:
+        delay_state["asking_for"] = "current_delay"
+        return "How many minutes is your train currently delayed?"
+    
+    if delay_state["destination"] is None:
+        delay_state["asking_for"] = "destination"
+        return "What is your destination station?"
+    
+    #check destination is Waterloo — model only works for this route
+    if delay_state["destination"] != "WAT":
+        reset_delay_state()
+        reset_state()
+        return "I can currently only predict arrival delays for trains arriving at London Waterloo."
+
+    #all info collected — run prediction
+    result = predict_arrival_delay(
+        current_station=delay_state["current_station"],
+        current_delay_mins=delay_state["current_delay"]
+    )
+    reset_delay_state()
+    reset_state()
+    return result["message"]
 
 def get_missing_fields(entities):
     return [f for f in REQUIRED_FIELDS if f not in entities]
@@ -382,6 +461,14 @@ def process_user_input(user_input: str):
 
     if conversation_state["awaiting_next_action"]:
         return handle_post_completion(user_input)
+    
+    #if already mid-delay prediction conversation, continue it
+    if any(delay_state[k] is not None for k in ["current_station", "current_delay", "destination", "asking_for"]):
+        return handle_delay_prediction(user_input)
+    
+    #check for delay prediction BEFORE station detection and KB lookup
+    if is_delay_prediction_request(user_input):
+        return handle_delay_prediction(user_input)
     
     stations = find_stations(user_input)
     if stations and conversation_state["intent"] is None:

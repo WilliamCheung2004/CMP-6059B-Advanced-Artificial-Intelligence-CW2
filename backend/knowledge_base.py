@@ -1,5 +1,3 @@
-#knowledge_base.py
-
 import json
 import csv
 import os
@@ -60,5 +58,5 @@ if __name__ == '__main__':
     print(get_station_code('Liverpool street')) # LSX
     print(get_station_code('Liverpool street London')) # LST
     print(get_faq('railcard'))             # A railcard gives you...
-    print(get_rule('advance_booking'))     # Cheapest advance tickets...
+    print(get_booking_rule('advance_booking'))     # Cheapest advance tickets...
     print("\n")
