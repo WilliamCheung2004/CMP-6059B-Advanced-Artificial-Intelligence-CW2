@@ -12,7 +12,7 @@
         "live": "For live train running information, check National Rail at nationalrail.co.uk or your train operator's app."
     },
 
-    "rules": {
+    "booking_rules": {
         "advance_booking": "Cheapest advance tickets are released 12 weeks before travel.",
         "off_peak": "Travelling off-peak or at weekends is usually cheaper.",
         "split_ticketing": "Sometimes buying two tickets for parts of a journey is cheaper than one ticket for the whole journey."
@@ -33,5 +33,12 @@
         "family": "For families with children, offering 1/3 off most rail fares.",
         "senior": "For people aged 60 and over, offering 1/3 off most rail fares.",
         "disabled": "For people with disabilities, offering 1/3 off most rail fares."
+    },
+
+    "delay_repay": {
+        "15": "If delayed 15-29 minutes you may claim 25% of your single fare.",
+        "30": "If delayed 30-59 minutes you may claim 50% of your single fare.",
+        "60": "If delayed 60-119 minutes you may claim 100% of your single fare.",
+        "120": "If delayed 120+ minutes you may claim 100% of your return fare."
     }
 }

@@ -1,3 +1,5 @@
+#knowledge_base.py
+
 import json
 import csv
 import os
@@ -43,8 +45,8 @@ def get_faq(topic: str) -> str:
     return None
 
 #returns the rule for a given topic, or None if not found
-def get_rule(topic: str) -> str:
-    return KB['rules'].get(topic, None)
+def get_booking_rule(topic: str) -> str:
+    return KB['booking_rules'].get(topic, None)
 
 #returns a list of all known station names
 def get_all_stations() -> list:

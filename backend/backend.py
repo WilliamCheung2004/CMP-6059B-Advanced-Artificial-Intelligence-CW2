@@ -8,7 +8,7 @@ from knowledge_base import get_faq, get_rule
 SESSION_ID = "session1"
 
 conversation_state = {
-    "awaiting": None,
+    "awaiting": None, # can be "origin", "destination", or "date" when waiting for that info
     "entities": {},
     "awaiting_preference": False   # True once all slots filled, waiting for ticket choice
 }
@@ -154,7 +154,7 @@ def process_user_input(user_input):
     else:
         intent = "unknown"
     
-    kb_key = INTENT_TO_FAQ_KEY.get(intent, intent)
+    kb_key = INTENT_TO_FAQ_KEY.get(intent, intent) #map intent to KB key, default to intent name if not in mapping
     kb_response = get_faq(user_input) or get_faq(kb_key) or get_rule(kb_key)
     if kb_response and intent not in ("find_ticket", "plan_journey"):
         save_message(SESSION_ID, user_input, kb_response, intent)
