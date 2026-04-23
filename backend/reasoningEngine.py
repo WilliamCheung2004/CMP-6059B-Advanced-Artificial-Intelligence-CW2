@@ -129,8 +129,33 @@ def is_delay_prediction_request(user_input: str) -> bool:
 def handle_delay_prediction(user_input: str) -> str:
     text = user_input.lower()
     
+    #on first call, try to extract everything at once
+    if delay_state["current_station"] is None and delay_state["current_delay"] is None:
+        #try to extract current station
+        stations = find_stations(user_input)
+        if stations:
+            code = get_station_code(stations[0])
+            if code:
+                delay_state["current_station"] = code
+                
+        #try to extract delay in minutes
+        match = re.search(r"(\d+)\s*(min|minute|minutes)?", text)
+        if match:
+            delay_state["current_delay"] = int(match.group(1))
+            
+        #try to extract destination (must be different station to current)
+        if "waterloo" in text and "merseyside" not in text:
+            delay_state["destination"] = "WAT"
+        elif len(stations) > 1:
+            for s in stations[1:]:  # skip first as that's current_station
+                code = get_station_code(s)
+                if code and code != delay_state["current_station"]:
+                    delay_state["destination"] = code
+                    break
+    
+    #if not, extract only what is still missing:
     #try to extract current station
-    if delay_state["current_station"] is None:
+    elif delay_state["current_station"] is None:
         stations = find_stations(user_input)
         if stations:
             code = get_station_code(stations[0])
@@ -145,13 +170,16 @@ def handle_delay_prediction(user_input: str) -> str:
                 
     #then try to extract destination
     elif delay_state["destination"] is None:
-        stations = find_stations(user_input)
-        if stations and delay_state["current_station"] is not None:
-            for s in stations:
-                code = get_station_code(s)
-                if code and code != delay_state["current_station"]:
-                    delay_state["destination"] = code
-                    break
+        if "waterloo" in text and "merseyside" not in text:
+            delay_state["destination"] = "WAT"
+        else:
+            stations = find_stations(user_input)
+            if stations and delay_state["current_station"] is not None:
+                for s in stations:
+                    code = get_station_code(s)
+                    if code and code != delay_state["current_station"]:
+                        delay_state["destination"] = code
+                        break
 
     #ask for missing info step by step
     if delay_state["current_station"] is None:
