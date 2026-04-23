@@ -1,4 +1,5 @@
 #reasoningEngine.py
+#ollama run mistral to start the model server before running this script
 
 import requests
 from intentClassifier import classify_intent 
