@@ -1,12 +1,14 @@
 #reasoningEngine.py
-#ollama run mistral to start the model server before running this script
+
+#to start the model server before running this script, run:
+#   ollama run mistral
 
 import requests
 from intentClassifier import classify_intent 
-from intent import detect_primary_intent, extract_entities, find_stations, extract_time_semantic, detect_intent
+from intent import detect_primary_intent, extract_entities, find_stations, extract_time_semantic, detect_intent, get_station_code
 from APIData import print_journey_details,get_ticket_prices,get_timestamp
 import json
-from knowledge_base import get_faq, get_booking_rule, get_station_code, KB
+from knowledge_base import get_faq, get_booking_rule, KB
 from delayPrediction import predict_arrival_delay
 import re
 
@@ -145,7 +147,6 @@ def handle_delay_prediction(user_input: str) -> str:
     elif delay_state["destination"] is None:
         stations = find_stations(user_input)
         if stations and delay_state["current_station"] is not None:
-            #avoid overwriting current_station with destination
             for s in stations:
                 code = get_station_code(s)
                 if code and code != delay_state["current_station"]:

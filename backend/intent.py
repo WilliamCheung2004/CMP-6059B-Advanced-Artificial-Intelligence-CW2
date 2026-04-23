@@ -253,6 +253,10 @@ def find_stations(message):
             phrase = " ".join(words[i:j])
             if phrase in STATIONS and phrase not in found:
                 found.append(phrase)
+            #check reversed order to catch "London Waterloo" as well as "Waterloo London"
+            reversed_phrase = " ".join(reversed(words[i:j]))
+            if reversed_phrase in STATIONS and reversed_phrase not in found:
+                found.append(reversed_phrase)
 
     for w in words:
         if w in STATIONS and w not in found:
