@@ -11,6 +11,8 @@ import json
 from knowledge_base import get_faq, get_booking_rule, KB
 from delayPrediction import predict_arrival_delay
 import re
+from database import save_message, save_journey, init_db
+import uuid
 
 confidence_threshold = 0.6
 
@@ -32,6 +34,8 @@ conversation_state = {
     "awaiting_next_action": False,
     "asking_for": None  
 }
+
+session_id = str(uuid.uuid4())  #generate a unique session ID for this conversation
 
 delay_state = {
     "current_station": None,
@@ -195,7 +199,7 @@ def handle_delay_prediction(user_input: str) -> str:
         return "What is your destination station?"
     
     #check destination is Waterloo — model only works for this route
-    if delay_state["destination"] != "WAT":
+    if delay_state["destination"] is not None and delay_state["destination"] != "WAT":
         reset_delay_state()
         reset_state()
         return "I can currently only predict arrival delays for trains arriving at London Waterloo."
@@ -480,25 +484,29 @@ def handle_post_completion(user_input):
         return process_user_input(user_input)
 
     if any(x in text for x in ["yes", "ok", "sure", "yeah", "yep"]):
+        intent_to_log = conversation_state.get("intent")
         reset_state()
-        return "What else can I help you with — journeys, tickets, delays, or refunds?"
+        return "What else can I help you with — journeys, tickets, delays, or refunds?", intent_to_log
     
+    intent_to_log = conversation_state.get("intent")
     reset_state()
-    return "Anything else I can help with?"
+    return "Anything else I can help with?", intent_to_log
 
 #Getting intent
-def process_user_input(user_input: str):
+def process_user_input_internal(user_input: str):
 
     if conversation_state["awaiting_next_action"]:
-        return handle_post_completion(user_input)
+        return handle_post_completion(user_input), conversation_state.get("intent")
     
     #if already mid-delay prediction conversation, continue it
     if any(delay_state[k] is not None for k in ["current_station", "current_delay", "destination", "asking_for"]):
-        return handle_delay_prediction(user_input)
+        conversation_state["intent"] = "delay_prediction"
+        return handle_delay_prediction(user_input), conversation_state.get("intent")
     
     #check for delay prediction BEFORE station detection and KB lookup
     if is_delay_prediction_request(user_input):
-        return handle_delay_prediction(user_input)
+        conversation_state["intent"] = "delay_prediction"
+        return handle_delay_prediction(user_input), conversation_state.get("intent")
     
     stations = find_stations(user_input)
     if stations and conversation_state["intent"] is None:
@@ -521,27 +529,42 @@ def process_user_input(user_input: str):
             intent = non_greeting[0]  #use the next best intent instead
             conversation_state["intent"] = intent
         else:
+            intent_to_log = conversation_state.get("intent")
             reset_state()
-            return "Hi! How can I help?"
+            return "Hi! How can I help?", intent_to_log
         
+    if conversation_state["intent"] == "delay_prediction":
+        return handle_delay_prediction(user_input), "delay_prediction"
+
     #check KB before routing to journey planning
     # - catches questions like "what types of ticket are there?"
     kb_answer = get_kb_answer(user_input)
+    
+    if kb_answer and conversation_state["intent"] is None:
+        conversation_state["intent"] = "knowledge_query"
+
     if kb_answer:
+        intent_to_log = conversation_state.get("intent")
         reset_state()
-        return phrase_kb_answer(kb_answer, user_input)
+        return phrase_kb_answer(kb_answer, user_input), intent_to_log
     
     if intent in ["plan_journey", "find_ticket"]:
-        return handle_plan_journey(user_input)
+        return handle_plan_journey(user_input), conversation_state.get("intent")
 
     if intent in ["refund_info", "delay_info", "seat_info", "platform_info", "live_status"]:
-        return handle_knowledge_query(user_input, intent)
+        return handle_knowledge_query(user_input, intent), conversation_state.get("intent")
     
-    return "Sorry I can only help with: journey planning, tickets, disruptions, refunds."
+    return "Sorry I can only help with: journey planning, tickets, disruptions, refunds.", conversation_state.get("intent")
+
+def process_user_input(user_input: str):
+    response, intent = process_user_input_internal(user_input) or "Sorry, something went wrong."
+    save_message(session_id, user_input, response, intent)
+    return response
 
 
 #Main Chatbot Start
 if __name__ == "__main__":
+    init_db()
     print("Assistant: Hi! I can help with train journeys, tickets, disruptions, or refunds.")
 
     while True:
