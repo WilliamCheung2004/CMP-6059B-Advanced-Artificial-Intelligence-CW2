@@ -25,9 +25,10 @@ def predict_arrival_delay(current_station: str, current_delay_mins: int, planned
     """
     #check station is known
     if current_station.upper() not in encoder.classes_:
+        known_stations = ", ".join(sorted(encoder.classes_))
         return {
             'predicted_delay': None,
-            'message': f"Sorry, I don't recognise the station code '{current_station}'."
+            'message': f"I don't have delay data for that station. I can predict delays for trains currently at:\n{known_stations}.\nWhich of these are you closest to?"
         }
 
     station_enc = encoder.transform([current_station.upper()])[0]

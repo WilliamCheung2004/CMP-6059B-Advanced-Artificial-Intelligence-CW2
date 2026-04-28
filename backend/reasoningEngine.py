@@ -132,60 +132,52 @@ def is_delay_prediction_request(user_input: str) -> bool:
 
 def handle_delay_prediction(user_input: str) -> str:
     text = user_input.lower()
-    
-    #on first call, try to extract everything at once
-    if delay_state["current_station"] is None and delay_state["current_delay"] is None:
-        #try to extract current station
+    asking_for = delay_state.get("asking_for")
+
+    # If we know what we're waiting for, only extract that field
+    if asking_for == "current_station":
         stations = find_stations(user_input)
         if stations:
             code = get_station_code(stations[0])
             if code:
                 delay_state["current_station"] = code
-                
-        #try to extract delay in minutes
-        match = re.search(r"(\d+)\s*(min|minute|minutes)?", text)
+                delay_state["asking_for"] = None
+
+    elif asking_for == "current_delay":
+        match = re.search(r"(\d+)\s*(min|minute|minutes)", text)
         if match:
             delay_state["current_delay"] = int(match.group(1))
-            
-        #try to extract destination (must be different station to current)
+            delay_state["asking_for"] = None
+
+    elif asking_for == "destination":
         if "waterloo" in text and "merseyside" not in text:
             delay_state["destination"] = "WAT"
-        elif len(stations) > 1:
-            for s in stations[1:]:  # skip first as that's current_station
+            delay_state["asking_for"] = None
+        else:
+            stations = find_stations(user_input)
+            for s in stations:
                 code = get_station_code(s)
                 if code and code != delay_state["current_station"]:
                     delay_state["destination"] = code
+                    delay_state["asking_for"] = None
                     break
-    
-    #if not, extract only what is still missing:
-    #try to extract current station
-    elif delay_state["current_station"] is None:
+
+    else:
+        # First message — try to extract everything at once
         stations = find_stations(user_input)
         if stations:
             code = get_station_code(stations[0])
             if code:
                 delay_state["current_station"] = code
-                
-    #then try to extract current delay in minutes
-    elif delay_state["current_delay"] is None:
-        match = re.search(r"(\d+)\s*(min|minute|minutes)?", text)
+
+        match = re.search(r"(\d+)\s*(min|minute|minutes)", text)
         if match:
             delay_state["current_delay"] = int(match.group(1))
-                
-    #then try to extract destination
-    elif delay_state["destination"] is None:
+
         if "waterloo" in text and "merseyside" not in text:
             delay_state["destination"] = "WAT"
-        else:
-            stations = find_stations(user_input)
-            if stations and delay_state["current_station"] is not None:
-                for s in stations:
-                    code = get_station_code(s)
-                    if code and code != delay_state["current_station"]:
-                        delay_state["destination"] = code
-                        break
 
-    #ask for missing info step by step
+    # Ask for whatever is still missing
     if delay_state["current_station"] is None:
         delay_state["asking_for"] = "current_station"
         return "Which station are you currently at?"
@@ -193,22 +185,26 @@ def handle_delay_prediction(user_input: str) -> str:
     if delay_state["current_delay"] is None:
         delay_state["asking_for"] = "current_delay"
         return "How many minutes is your train currently delayed?"
-    
+
     if delay_state["destination"] is None:
         delay_state["asking_for"] = "destination"
         return "What is your destination station?"
-    
-    #check destination is Waterloo — model only works for this route
-    if delay_state["destination"] is not None and delay_state["destination"] != "WAT":
+
+    if delay_state["destination"] != "WAT":
         reset_delay_state()
         reset_state()
         return "I can currently only predict arrival delays for trains arriving at London Waterloo."
 
-    #all info collected — run prediction
+    # All info collected — run prediction
     result = predict_arrival_delay(
         current_station=delay_state["current_station"],
         current_delay_mins=delay_state["current_delay"]
     )
+    if result["predicted_delay"] is None:
+        #station not in model — ask again without resetting everything
+        delay_state["current_station"] = None
+        delay_state["asking_for"] = "current_station"
+        return result["message"]  #shows the helpful list of known stations
     reset_delay_state()
     reset_state()
     return result["message"]
