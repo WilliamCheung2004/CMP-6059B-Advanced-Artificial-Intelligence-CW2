@@ -144,7 +144,7 @@ def handle_delay_prediction(user_input: str) -> str:
                 delay_state["asking_for"] = None
 
     elif asking_for == "current_delay":
-        match = re.search(r"(\d+)\s*(min|minute|minutes)", text)
+        match = re.search(r"(\d+)\s*(min|minute|minutes)?", text)
         if match:
             delay_state["current_delay"] = int(match.group(1))
             delay_state["asking_for"] = None
