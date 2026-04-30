@@ -322,10 +322,9 @@ def extract_entities(message: str):
 
     results = search_dates(message)
     if results:
-        dt = results[0][1]              
-        dt = ensure_future_date(dt)     
+        dt = results[0][1]
+        dt = ensure_future_date(dt)
         date_found = dt.date().strftime("%d/%m/%Y")
-
 
     if not date_found:
         for ent in doc.ents:
@@ -345,7 +344,6 @@ def extract_entities(message: str):
     if date_found:
         entities["date"] = date_found
 
-    
     t = extract_time_semantic(message)
 
     if t == "00:00" and not user_provided_time(message):
@@ -354,11 +352,31 @@ def extract_entities(message: str):
     if t:
         entities["time"] = t
 
-
     intent_hint = detect_primary_intent(message)
 
     stations = find_stations(message)
-    origin, destination, candidates = assign_route(message, stations, intent_hint=intent_hint)
+
+    words = re.findall(r"\b[a-z]{3,}\b", message.lower())
+
+    extra_candidates = []
+
+    for word in words:
+        if word in stations:
+            continue
+
+        possible = [s for s in STATIONS if s.startswith(word)]
+
+        if len(possible) > 1:
+            extra_candidates.extend(possible[:8])
+
+    # merge before route assignment
+    all_stations = list(set(stations + extra_candidates))
+
+    origin, destination, candidates = assign_route(
+        message,
+        all_stations,
+        intent_hint=intent_hint
+    )
 
     if origin:
         entities['origin'] = origin
@@ -371,7 +389,21 @@ def extract_entities(message: str):
         else:
             entities['station_candidates'] = candidates
 
-    return entities  
+    words = re.findall(r"\b[a-z]{3,}\b", message.lower())
+
+    for word in words:
+        if word in stations:
+            continue
+
+        possible = [s for s in STATIONS if s.startswith(word)]
+
+        if len(possible) > 1:
+            if re.search(rf"\bto\s+{word}\b", message.lower()):
+                entities["destination_candidates"] = list(set(possible))[:8]
+            elif re.search(rf"\bfrom\s+{word}\b", message.lower()):
+                entities["origin_candidates"] = list(set(possible))[:8]
+
+    return entities
 
 # Testing 
 if __name__ == '__main__':

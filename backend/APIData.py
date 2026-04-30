@@ -12,6 +12,12 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 env_path = os.path.join(script_dir, 'user.env')
 load_dotenv(env_path)
 
+def format_date(dt_str):
+    if not dt_str:
+        return ""
+    return dt_str.replace("T", " ").split(".")[0]
+
+
 USERNAME = os.environ.get("CURRENT_USERNAME")
 PASSWORD = os.environ.get("CURRENT_PASSWORD")
 
@@ -57,61 +63,76 @@ def journey_plan(origin, destination, time):
        </soapenv:Body>
     </soapenv:Envelope>"""
 
-    response = requests.post(URL, data=soap_envelope, headers=HEADERS, auth=(USERNAME, PASSWORD))
+    response = requests.post(
+        URL,
+        data=soap_envelope,
+        headers=HEADERS,
+        auth=(USERNAME, PASSWORD)
+    )
 
     root = ET.fromstring(response.text)
-    body = root.find('soap:Body', NS)
-    jp = body.find('.//jps:RealtimeJourneyPlanResponse', NS)
+    body = root.find("soap:Body", NS)
 
-    journeys = jp.findall('.//jps:outwardJourney', NS)
+    if body is None:
+        return []
+
+    jp = body.find(".//jps:RealtimeJourneyPlanResponse", NS)
+
+    if jp is None:
+        print("DEBUG SOAP RESPONSE:\n", response.text)
+        return []
+
+    journeys_xml = jp.findall(".//jps:outwardJourney", NS)
 
     results = []
 
-    for j in journeys:
+    for j in journeys_xml:
+        journey_origin = j.findtext("jps:origin", default="", namespaces=NS)
+        journey_dest = j.findtext("jps:destination", default="", namespaces=NS)
 
-        # Journey-level origin/destination
-        journey_origin = j.findtext('jps:origin', default='', namespaces=NS)
-        journey_dest = j.findtext('jps:destination', default='', namespaces=NS)
-
-        # Filter by destination input
         if journey_dest.upper() != destination.upper():
             continue
 
-        # Extract service bulletin description
-        bulletin = j.findtext('.//jps:serviceBulletins/com:description', default='', namespaces=NS)
+        bulletins = set()
 
-        legs = []
+        raw_bulletins = j.findall(".//jps:serviceBulletins/com:description", NS)
+        for b in raw_bulletins:
+            if b is not None and b.text:
+                bulletins.add(b.text.strip())
 
-        for leg in j.findall('.//jps:leg', NS):
+        services = []
+        seen_services = set()
 
-            mode = leg.findtext('jps:mode', default='', namespaces=NS)
-            board = leg.findtext('jps:board', default='', namespaces=NS)
-            alight = leg.findtext('jps:alight', default='', namespaces=NS)
+        for leg in j.findall(".//jps:leg", NS):
 
-            sched_dep = leg.findtext('.//jps:scheduled/jps:departure', default='', namespaces=NS)
-            sched_arr = leg.findtext('.//jps:scheduled/jps:arrival', default='', namespaces=NS)
+            service_key = (
+                leg.findtext("jps:board", default="", namespaces=NS),
+                leg.findtext("jps:alight", default="", namespaces=NS),
+                leg.findtext(".//jps:scheduled/jps:departure", default="", namespaces=NS),
+                leg.findtext(".//jps:scheduled/jps:arrival", default="", namespaces=NS),
+                leg.findtext(".//com:name", default="", namespaces=NS),
+            )
 
-            rt_dep = leg.findtext('.//jps:realtime/jps:departure', default='', namespaces=NS)
-            rt_arr = leg.findtext('.//jps:realtime/jps:arrival', default='', namespaces=NS)
+            if service_key in seen_services:
+                continue
+            seen_services.add(service_key)
 
-            operator = leg.findtext('.//com:name', default='', namespaces=NS)
-
-            legs.append({
-                "mode": mode,
-                "origin": board,
-                "destination": alight,
-                "scheduled_departure": sched_dep,
-                "scheduled_arrival": sched_arr,
-                "realtime_departure": rt_dep,
-                "realtime_arrival": rt_arr,
-                "operator": operator
+            services.append({
+                "mode": leg.findtext("jps:mode", default="", namespaces=NS),
+                "from": service_key[0],
+                "to": service_key[1],
+                "departure": format_date(service_key[2]),
+                "arrival": format_date(service_key[3]),
+                "realtime_departure": leg.findtext(".//jps:realtime/jps:departure", default="", namespaces=NS),
+                "realtime_arrival": leg.findtext(".//jps:realtime/jps:arrival", default="", namespaces=NS),
+                "operator": service_key[4],
             })
 
         results.append({
-            "journey_origin": journey_origin,
-            "journey_destination": journey_dest,
-            "service_bulletin": bulletin,
-            "legs": legs
+            "origin": journey_origin,
+            "destination": journey_dest,
+            "service_bulletins": list(bulletins),
+            "services": services
         })
 
     return results

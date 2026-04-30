@@ -1,8 +1,3 @@
-#reasoningEngine.py
-
-#to start the model server before running this script, run:
-#   ollama run mistral
-
 import requests
 from intentClassifier import classify_intent 
 from intent import detect_primary_intent, extract_entities, find_stations, extract_time_semantic, detect_intent, get_station_code
@@ -32,7 +27,9 @@ conversation_state = {
     "intent": None,
     "entities": {},
     "awaiting_next_action": False,
-    "asking_for": None  
+    "asking_for": None,  
+    "last_journey_options" : None,
+    "last_ticket_options" : None,
 }
 
 session_id = str(uuid.uuid4())  #generate a unique session ID for this conversation
@@ -124,9 +121,13 @@ def reset_delay_state():
     
 def is_delay_prediction_request(user_input: str) -> bool:
     triggers = [
-        "my train is delayed", "train is running late", "delayed by",
-        "minutes late", "minutes delayed", "predict", "arrive at waterloo",
-        "when will it arrive", "i am on a train", "on the train"
+        "my train is delayed",
+        "train is running late",
+        "delayed by",
+        "minutes late",
+        "minutes delayed",
+        "i am on a train",
+        "on the train"
     ]
     return any(t in user_input.lower() for t in triggers)
 
@@ -229,6 +230,7 @@ def reset_state():
     conversation_state["intent"] = None
     conversation_state["entities"] = {}
     conversation_state["awaiting_next_action"] = False
+    conversation_state["asking_for"] = None
 
 #Ollama Chatbot
 def chatbot(messages):
@@ -262,7 +264,7 @@ def get_intent(message: str):
 
 
 #Pick one of the stations the user thinks 
-def ask_user_to_clarify_station(field, candidates):
+def clarify_station(field, candidates):
     numbered = "\n".join(f"{i+1}. {s.title()}" for i, s in enumerate(candidates))
     prompt = f"""
 You are a train assistant.
@@ -274,6 +276,7 @@ Rules:
 - 1-2 sentences
 - natural tone
 - list the options numbered
+- do not repond with anything to do with the rules
 """
     response = chatbot([{"role": "user", "content": prompt}])
     if response:
@@ -320,28 +323,17 @@ def resolve_candidate_from_input(user_input, candidates):
 
 #Keep asking given a detail not given yet
 def reask_for_field(field):
-    conversation_state["asking_for"] = field  # track what we're waiting for
-
-    prompt = f"""
-You are a train assistant.
-Ask the user for their {field}.
-- 1 short sentence
-- natural tone
-"""
-    response = chatbot([{"role": "user", "content": prompt}])
-    if response:
-        return response
-
-    fallback = {
+    prompts = {
         "origin": "Where are you travelling from?",
         "destination": "Where are you going to?",
-        "date": "When would you like to travel?",
+        "date": "What date would you like to travel?",
         "time": "What time would you like to travel?"
     }
-    return fallback.get(field, "Could you clarify?")
+    conversation_state["asking_for"] = field
+    return prompts.get(field, "Could you clarify?")
 
 
-def handle_plan_journey(user_input):
+def plan_journey(user_input):
     ents = conversation_state["entities"]
 
     #Prevent Same origin and destination 
@@ -354,6 +346,21 @@ def handle_plan_journey(user_input):
     new_ents = extract_entities(user_input)
     asking_for = conversation_state.get("asking_for")
 
+    print("DEBUG new_ents:", new_ents)
+    print("DEBUG ents:", ents)
+    print("DEBUG asking_for:", conversation_state.get("asking_for"))
+    
+    if asking_for:
+        if "station_candidates" in new_ents:
+            new_ents[f"{asking_for}_candidates"] = new_ents.pop("station_candidates")
+
+        # also map direct station if user just typed "london"
+        if "origin" in new_ents and asking_for == "destination":
+            new_ents["destination"] = new_ents.pop("origin")
+
+        if "destination" in new_ents and asking_for == "origin":
+            new_ents["origin"] = new_ents.pop("destination")
+            
     if asking_for and asking_for not in ents:
         for candidate_key in ("origin_candidates", "destination_candidates", "station_candidates"):
             if candidate_key in new_ents:
@@ -376,10 +383,10 @@ def handle_plan_journey(user_input):
             else:
                 if candidate_key in new_ents:
                     ents[candidate_key] = new_ents[candidate_key]
-                return ask_user_to_clarify_station(slot, ents[candidate_key])
+                return clarify_station(slot, ents[candidate_key])
 
     for key, value in new_ents.items():
-        if key == asking_for:
+        if asking_for == key:
             ents[key] = value
         elif key not in ents:
             ents[key] = value
@@ -387,7 +394,7 @@ def handle_plan_journey(user_input):
     for slot in ("origin", "destination"):
         candidate_key = f"{slot}_candidates"
         if candidate_key in ents and slot not in ents:
-            return ask_user_to_clarify_station(slot, ents[candidate_key])
+            return clarify_station(slot, ents[candidate_key])
 
     conversation_state["entities"] = ents
 
@@ -445,121 +452,178 @@ Time: {time if time else "Not provided"}
     # Fetch API Data
     journey_data = print_journey_details(origin_code, destination_code, depart_time)
 
-    journey_json = json.dumps(journey_data, indent=2)
+    if not journey_data:
+        return confirmation + "\n\nNo journeys found. Try different time or route."
 
-    # Format data via LLM
-    format_prompt = f"""
-You are a train assistant.
+    # STORE RAW RESULT (IMPORTANT)
+    conversation_state["last_journey_options"] = journey_data
 
-Reformat the following journey data into a clean readable list.
-Rules:
-- Do NOT invent times, prices, or stations
-- Only reformat what is provided
-- Use bullet points or short lines
-- Keep it formal
+    # BUILD FLATTENED OPTIONS FOR USER SELECTION
+    flat_options = []
 
-Journey data:
-{journey_json}
-"""
+    for j in journey_data:
+        try:
+            service = j["services"][0]
+            flat_options.append({
+                "origin": j["origin"],
+                "destination": j["destination"],
+                "departure": service.get("departure") or service.get("realtime_departure"),
+                "arrival": service.get("arrival") or service.get("realtime_arrival"),
+                "operator": service.get("operator")
+            })
+        except:
+            continue
 
-    formatted = chatbot([{"role": "user", "content": format_prompt}]) or "Unable to format journey details."
+    conversation_state["last_ticket_options"] = flat_options
 
-    return confirmation + "\n\n" + formatted
+    # FORMAT DISPLAY TEXT
+    msg = "\n\nHere are some live times found:\n"
+
+    for i, opt in enumerate(flat_options[:5], 1):
+        msg += f"{i}. {opt['operator']}, {opt['departure']} → {opt['arrival']}\n"
+
+    conversation_state["pending_ticket_offer"] = True
+    conversation_state["ticket_step"] = "confirm"
+
+    return confirmation + "\n" + msg + "\n\nWould you like to book one of these? (yes/no)"
+
 
 
 #What happens after user is done with intent
 def handle_post_completion(user_input):
 
     text = user_input.lower().strip()
-
     intent, _ = get_intent(user_input)
 
     if intent in ["plan_journey", "find_ticket", "refund_info", "delay_info"]:
         conversation_state["awaiting_next_action"] = False
         conversation_state["intent"] = intent
-        return process_user_input(user_input)
+        return process_user_input_internal(user_input)
 
     if any(x in text for x in ["yes", "ok", "sure", "yeah", "yep"]):
-        intent_to_log = conversation_state.get("intent")
         reset_state()
-        return "What else can I help you with — journeys, tickets, delays, or refunds?", intent_to_log
-    
-    intent_to_log = conversation_state.get("intent")
+        return "What else can I help you with — journeys, tickets, delays, or refunds?", None
+
     reset_state()
-    return "Anything else I can help with?", intent_to_log
+    return "Anything else I can help with?", None
 
 #Getting intent
 def process_user_input_internal(user_input: str):
 
+    # Handle post-completion
     if conversation_state["awaiting_next_action"]:
-        return handle_post_completion(user_input), conversation_state.get("intent")
-    
-    #if already mid-delay prediction conversation, continue it
+        return handle_post_completion(user_input)
+
+
+    # Ticket Flow
+    if conversation_state.get("pending_ticket_offer"):
+        text = user_input.lower().strip()
+
+        # confirm ticket viewing
+        if conversation_state.get("ticket_step") == "confirm":
+
+            if text in ["yes", "y", "yeah", "yep", "ok", "sure"]:
+                conversation_state["ticket_step"] = "select"
+
+                options = conversation_state.get("last_journey_options", [])
+
+                if not options:
+                    conversation_state["pending_ticket_offer"] = False
+                    conversation_state["ticket_step"] = None
+                    reset_state()
+                    return "No journeys available to book.", "ticket_select"
+
+                msg = "Choose a journey option:\n"
+
+                for i, j in enumerate(options[:5], 1):
+                    try:
+                        dep = j["services"][0]["departure"]
+                        arr = j["services"][0]["arrival"]
+                        op = j["services"][0]["operator"]
+                        msg += f"{i}. {op}, {dep} → {arr}\n"
+                    except:
+                        msg += f"{i}. Invalid journey format\n"
+
+                return msg, "ticket_select"
+
+            if text in ["no", "nope", "nah"]:
+                conversation_state["pending_ticket_offer"] = False
+                conversation_state["ticket_step"] = None
+                conversation_state["last_journey_options"] = None
+                reset_state()
+                main()
+
+        # user selects journey 
+        if conversation_state.get("ticket_step") == "select":
+
+            if text.isdigit():
+                idx = int(text) - 1
+                options = conversation_state.get("last_ticket_options", [])
+
+                if 0 <= idx < len(options):
+
+                    selected = options[idx]
+
+                    conversation_state["pending_ticket_offer"] = False
+                    conversation_state["ticket_step"] = None
+                    conversation_state["last_ticket_options"] = None
+
+                    reset_state()
+
+                    print(selected["origin"],)
+                    print(selected["destination"],)
+                    print(selected["departure"])
+                    print(selected["arrival"])
+                
+                return f"Please choose a number between 1 and {len(options)}.", "ticket_select"
+
+
     if any(delay_state[k] is not None for k in ["current_station", "current_delay", "destination", "asking_for"]):
         conversation_state["intent"] = "delay_prediction"
-        return handle_delay_prediction(user_input), conversation_state.get("intent")
-    
-    #check for delay prediction BEFORE station detection and KB lookup
+        return handle_delay_prediction(user_input), "delay_prediction"
+
     if is_delay_prediction_request(user_input):
         conversation_state["intent"] = "delay_prediction"
-        return handle_delay_prediction(user_input), conversation_state.get("intent")
-    
-    stations = find_stations(user_input)
-    if stations and conversation_state["intent"] is None:
-        conversation_state["intent"] = "plan_journey"
+        return handle_delay_prediction(user_input), "delay_prediction"
 
-    if conversation_state["intent"] in ["plan_journey", "find_ticket"]:
-        intent = conversation_state["intent"]
-    else:
-        intent, confidence = get_intent(user_input)
-        if confidence > 0.6:
-            conversation_state["intent"] = intent
+
+    kb_answer = get_kb_answer(user_input)
+    if kb_answer:
+        reset_state()
+        return phrase_kb_answer(kb_answer, user_input), "knowledge_query"
+
+
+    intent, confidence = get_intent(user_input)
+
+    stations = find_stations(user_input)
+
+    if stations and intent in ["unknown", "plan_journey"]:
+        conversation_state["intent"] = "plan_journey"
+    elif confidence > 0.6:
+        conversation_state["intent"] = intent
 
     intent = conversation_state["intent"]
 
-    #handle greetings with fallback to next intent
+
     if intent == "greeting":
-        all_intents = detect_intent(user_input)  #get the full ranked list
-        non_greeting = [i for i in all_intents if i not in ("greeting", "unknown")]
-        if non_greeting:
-            intent = non_greeting[0]  #use the next best intent instead
-            conversation_state["intent"] = intent
-        else:
-            intent_to_log = conversation_state.get("intent")
-            reset_state()
-            return "Hi! How can I help?", intent_to_log
-        
-    if conversation_state["intent"] == "delay_prediction":
-        return handle_delay_prediction(user_input), "delay_prediction"
-
-    #check KB before routing to journey planning
-    # - catches questions like "what types of ticket are there?"
-    kb_answer = get_kb_answer(user_input)
-    
-    if kb_answer and conversation_state["intent"] is None:
-        conversation_state["intent"] = "knowledge_query"
-
-    if kb_answer:
-        intent_to_log = conversation_state.get("intent")
         reset_state()
-        return phrase_kb_answer(kb_answer, user_input), intent_to_log
-    
+        return "Hi. How can I help?", "greeting"
+
+
     if intent in ["plan_journey", "find_ticket"]:
-        return handle_plan_journey(user_input), conversation_state.get("intent")
+        return plan_journey(user_input), intent
 
     if intent in ["refund_info", "delay_info", "seat_info", "platform_info", "live_status"]:
-        return handle_knowledge_query(user_input, intent), conversation_state.get("intent")
-    
-    return "Sorry I can only help with: journey planning, tickets, disruptions, refunds.", conversation_state.get("intent")
+        return handle_knowledge_query(user_input, intent), intent
+
+    return "Sorry I can only help with: journey planning, tickets, disruptions, refunds.", intent
 
 def process_user_input(user_input: str):
     response, intent = process_user_input_internal(user_input) or "Sorry, something went wrong."
     save_message(session_id, user_input, response, intent)
     return response
 
-
-#Main Chatbot Start
-if __name__ == "__main__":
+def main():
     init_db()
     print("Assistant: Hi! I can help with train journeys, tickets, disruptions, or refunds.")
 
@@ -571,3 +635,8 @@ if __name__ == "__main__":
 
         response = process_user_input(user_input)
         print("Assistant:", response)
+
+
+#Main Chatbot Start
+if __name__ == "__main__":
+    main()
