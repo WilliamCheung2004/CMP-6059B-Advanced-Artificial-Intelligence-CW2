@@ -6,7 +6,18 @@ from dateparser.search import search_dates
 from datetime import datetime, timedelta
 from difflib import get_close_matches
 
+
 nlp = spacy.load('en_core_web_sm')
+
+# Common English stopwords to avoid as station matches
+STOPWORDS = set([
+    'how', 'about', 'the', 'a', 'an', 'and', 'or', 'but', 'if', 'then', 'when', 'where', 'which', 'what', 'who', 'whom',
+    'this', 'that', 'these', 'those', 'on', 'in', 'at', 'by', 'for', 'with', 'of', 'to', 'from', 'as', 'is', 'are', 'was', 'were',
+    'be', 'been', 'being', 'do', 'does', 'did', 'have', 'has', 'had', 'can', 'could', 'will', 'would', 'shall', 'should', 'may', 'might',
+    'must', 'not', 'so', 'just', 'now', 'today', 'tomorrow', 'yesterday', 'please', 'let', 'me', 'you', 'i', 'we', 'they', 'he', 'she', 'it',
+    'my', 'your', 'our', 'their', 'his', 'her', 'its', 'mine', 'yours', 'ours', 'theirs', 'him', 'them', 'ourselves', 'yourself', 'yourselves',
+    'ourselves', 'themselves', 'myself', 'yourself', 'himself', 'herself', 'itself', 'ourselves', 'themselves', 'am', 'pm', 'also', 'too', 'up', 'down', 'over', 'under', 'again', 'further', 'then', 'once', 'here', 'there', 'all', 'any', 'both', 'each', 'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'only', 'own', 'same', 'than', 'very', 's', 't', 'can', 'will', 'don', 'should', 'now'
+])
 
 #Loading station names 
 STATIONS = []
@@ -101,11 +112,12 @@ def extract_time_semantic(text):
         ampm = m.group(3)
 
         if ampm:
-            if ampm == "pm" and hour != 12:
-                hour += 12
-            if ampm == "am" and hour == 12:
-                hour = 0
-
+            # Only adjust for am/pm if hour is in 12-hour format (1-12)
+            if hour <= 12:
+                if ampm == "pm" and hour != 12:
+                    hour += 12
+                if ampm == "am" and hour == 12:
+                    hour = 0
         return f"{hour:02d}:{minute:02d}"
 
     # 2. H am/pm (e.g., 7pm, 6am)
@@ -114,10 +126,13 @@ def extract_time_semantic(text):
         hour = int(m.group(1))
         ampm = m.group(2)
 
-        if ampm == "pm" and hour != 12:
-            hour += 12
-        if ampm == "am" and hour == 12:
-            hour = 0
+        # Only adjust for am/pm if hour is in 12-hour format (1-12)
+        if hour <= 12:
+            if ampm == "pm" and hour != 12:
+                hour += 12
+            if ampm == "am" and hour == 12:
+                hour = 0
+        # If hour > 12 and ampm provided, ignore ampm (user mixed formats)
 
         return f"{hour:02d}:00"
 
@@ -248,22 +263,25 @@ def find_stations(message):
     words = msg.split()
     found = []
 
-    for i in range(len(words)):
-        for j in range(i + 1, min(i + 4, len(words) + 1)):
-            phrase = " ".join(words[i:j])
+    # Filter out stopwords from words
+    filtered_words = [w for w in words if w not in STOPWORDS]
+
+    for i in range(len(filtered_words)):
+        for j in range(i + 1, min(i + 4, len(filtered_words) + 1)):
+            phrase = " ".join(filtered_words[i:j])
             if phrase in STATIONS and phrase not in found:
                 found.append(phrase)
             #check reversed order to catch "London Waterloo" as well as "Waterloo London"
-            reversed_phrase = " ".join(reversed(words[i:j]))
+            reversed_phrase = " ".join(reversed(filtered_words[i:j]))
             if reversed_phrase in STATIONS and reversed_phrase not in found:
                 found.append(reversed_phrase)
 
-    for w in words:
+    for w in filtered_words:
         if w in STATIONS and w not in found:
             found.append(w)
 
     if not found:
-        for token in words:
+        for token in filtered_words:
             if len(token) < 3:
                 continue
             prefix_matches = [s for s in STATIONS if s == token or s.startswith(token + " ")]
@@ -361,7 +379,7 @@ def extract_entities(message: str):
     extra_candidates = []
 
     for word in words:
-        if word in stations:
+        if word in stations or word in STOPWORDS:
             continue
 
         possible = [s for s in STATIONS if s.startswith(word)]
@@ -372,15 +390,17 @@ def extract_entities(message: str):
     # merge before route assignment
     all_stations = list(set(stations + extra_candidates))
 
+    # Prevent spurious station assignment if only a date is present and no clear station
     origin, destination, candidates = assign_route(
         message,
         all_stations,
         intent_hint=intent_hint
     )
 
-    if origin:
+    # Only assign origin/destination if not just a date and the station is not a stopword
+    if origin and origin not in STOPWORDS:
         entities['origin'] = origin
-    if destination:
+    if destination and destination not in STOPWORDS:
         entities['destination'] = destination
 
     if candidates:
@@ -389,10 +409,8 @@ def extract_entities(message: str):
         else:
             entities['station_candidates'] = candidates
 
-    words = re.findall(r"\b[a-z]{3,}\b", message.lower())
-
     for word in words:
-        if word in stations:
+        if word in stations or word in STOPWORDS:
             continue
 
         possible = [s for s in STATIONS if s.startswith(word)]
@@ -404,6 +422,7 @@ def extract_entities(message: str):
                 entities["origin_candidates"] = list(set(possible))[:8]
 
     return entities
+
 
 # Testing 
 if __name__ == '__main__':

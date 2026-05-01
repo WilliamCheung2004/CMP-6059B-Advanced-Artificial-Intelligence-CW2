@@ -27,12 +27,11 @@
     },
 
     "railcards": {
+        "16-17":"For young people aged 16-25, offering 1/2 price off most rail fares.",
         "16-25": "For young people aged 16-25, offering 1/3 off most rail fares.",
         "26-30": "For people aged 26-30, offering 1/3 off most rail fares.",
-        "two_together": "For two named adults travelling together, offering 1/3 off most rail fares.",
-        "family": "For families with children, offering 1/3 off most rail fares.",
-        "senior": "For people aged 60 and over, offering 1/3 off most rail fares.",
-        "disabled": "For people with disabilities, offering 1/3 off most rail fares."
+        "disabled": "For people with a disability that meets the eligibility criteria, offering 1/3 off most rail fares.",
+        "senior": "For people aged 60 and over, offering 1/3 off most rail fares."
     },
 
     "delay_repay": {

@@ -18,6 +18,15 @@ def format_date(dt_str):
     return dt_str.replace("T", " ").split(".")[0]
 
 
+def get_timestamp(date_str, time_str):
+    if not date_str or not time_str:
+        return None
+    try:
+        dt = datetime.strptime(f"{date_str} {time_str}", "%d/%m/%Y %H:%M")
+        return dt.strftime("%Y-%m-%dT%H:%M:%S")
+    except:
+        return None
+
 USERNAME = os.environ.get("CURRENT_USERNAME")
 PASSWORD = os.environ.get("CURRENT_PASSWORD")
 
@@ -212,13 +221,13 @@ def get_ticket_prices(origin_crs, destination_crs, depart_datetime, num_adults=0
         if "totalPrice" in fare_info and fare_info["totalPrice"]:
             price = int(fare_info["totalPrice"]) / 100
 
-        print(f"\n{fare_info.get('description', 'Unknown fare')}")
-        print(f"  Class: {fare_info.get('fareClass')}")
-        print(f"  Category: {fare_info.get('fareCategory')}")
-        print(f"  Route code: {fare_info.get('routeCode')}")
-        print(f"  Price: £{price:.2f}" if price else "  Price: N/A")
+    #     print(f"\n{fare_info.get('description', 'Unknown fare')}")
+    #     print(f"  Class: {fare_info.get('fareClass')}")
+    #     print(f"  Category: {fare_info.get('fareCategory')}")
+    #     print(f"  Route code: {fare_info.get('routeCode')}")
+    #     print(f"  Price: £{price:.2f}" if price else "  Price: N/A")
 
-    print("=========================\n")
+    # print("=========================\n")
 
     return results
 
@@ -251,14 +260,6 @@ def print_journey_details(origin_crs, destination_crs, depart_datetime):
     # print("\n")  # spacing
     return journeys
 
-def get_timestamp(date_str, time_str):
-    if not date_str or not time_str:
-        return None
-    try:
-        dt = datetime.strptime(f"{date_str} {time_str}", "%d/%m/%Y %H:%M")
-        return dt.strftime("%Y-%m-%dT%H:%M:%S")
-    except:
-        return None
 
 
 
@@ -267,7 +268,7 @@ def get_timestamp(date_str, time_str):
 
 #Ticket prices 
 # now = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
-# get_ticket_prices("NRW", "LST", now, num_adults=1, num_children=0, fare_class="STANDARD")
+# get_ticket_prices("NRW", "COL", now, num_adults=1, num_children=0, fare_class="STANDARD")
 
 
 # now = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
