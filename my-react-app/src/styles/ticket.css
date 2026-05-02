@@ -115,6 +115,12 @@
     background: #1565C0;
 }
 
+.departureDate {
+    color: #6B7F99;
+    font-size: clamp(0.6875rem, 2vw, 0.8125rem);
+    font-weight: 400;
+}
+
 @media (max-width: 480px) {
     .bookButton {
         white-space: normal;
