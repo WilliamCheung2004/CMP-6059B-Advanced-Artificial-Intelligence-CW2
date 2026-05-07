@@ -508,7 +508,7 @@ Time: {time if time else "Not provided"}
     ticket_state["pending_ticket_offer"] = True
     ticket_state["ticket_step"] = "confirm"
 
-    return confirmation + "\n" + msg + "\n\nWould you like to book a ticket for one of these times? (yes/no)"
+    return msg + "\n\nWould you like to book a ticket for one of these times? (yes/no)"
 
 def build_national_rail_link(origin_code, destination_code, date, time):
     """Build National Rail Enquiries journey planner link with journey details"""

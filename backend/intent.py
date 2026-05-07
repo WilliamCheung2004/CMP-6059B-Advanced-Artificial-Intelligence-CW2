@@ -16,7 +16,7 @@ STOPWORDS = set([
     'be', 'been', 'being', 'do', 'does', 'did', 'have', 'has', 'had', 'can', 'could', 'will', 'would', 'shall', 'should', 'may', 'might',
     'must', 'not', 'so', 'just', 'now', 'today', 'tomorrow', 'yesterday', 'please', 'let', 'me', 'you', 'i', 'we', 'they', 'he', 'she', 'it',
     'my', 'your', 'our', 'their', 'his', 'her', 'its', 'mine', 'yours', 'ours', 'theirs', 'him', 'them', 'ourselves', 'yourself', 'yourselves',
-    'ourselves', 'themselves', 'myself', 'yourself', 'himself', 'herself', 'itself', 'ourselves', 'themselves', 'am', 'pm', 'also', 'too', 'up', 'down', 'over', 'under', 'again', 'further', 'then', 'once', 'here', 'there', 'all', 'any', 'both', 'each', 'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'only', 'own', 'same', 'than', 'very', 's', 't', 'can', 'will', 'don', 'should', 'now'
+    'ourselves', 'themselves', 'myself', 'yourself', 'himself', 'herself', 'itself', 'ourselves', 'themselves', 'also', 'too', 'up', 'down', 'over', 'under', 'again', 'further', 'then', 'once', 'here', 'there', 'all', 'any', 'both', 'each', 'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'only', 'own', 'same', 'than', 'very', 's', 't', 'can', 'will', 'don', 'should', 'now'
 ])
 
 #Loading station names 
@@ -170,7 +170,7 @@ INTENTS = {
 
     'journey_time': [
         'how long', 'duration', 'time', 'when', 'earliest', 'latest',
-        'next train', 'last train', 'timetable', 'schedule', "pm", "am"
+        'next train', 'last train', 'timetable', 'schedule'
     ],
 
     'delay_info':    [
@@ -225,6 +225,8 @@ INTENTS = expand_intents(INTENTS, SYNONYMS)
 #Fuzzy matching - if no direct keyword matches, check for close matches to handle typos and variations.
 def fuzzy_match(word, keywords, cutoff=0.8):
     matches = get_close_matches(word, keywords, n=1, cutoff=cutoff)
+    if(len(word) < 3): 
+        return None
     return matches[0] if matches else None
 
 # Intent detection based on keyword matching, bigrams, and fuzzy matching
