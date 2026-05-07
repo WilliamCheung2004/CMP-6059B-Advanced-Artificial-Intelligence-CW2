@@ -39,18 +39,9 @@ class TicketBot(KnowledgeEngine):
         super().__init__()
         self.tickets_data = tickets_data or []
         self.selected_ticket = None
-    
+
+    #Select ticket based on preference and railcard
     def select_ticket(self, preference=None, railcard=None):
-        """
-        Select the best ticket based on preference and railcard.
-        
-        Args:
-            preference: "cheapest", "quickest", or None
-            railcard: Railcard type or None
-        
-        Returns:
-            Selected ticket dict or None
-        """
         if not self.tickets_data:
             return None
         
@@ -138,42 +129,43 @@ def parse_traveller_info(text):
     text = text.lower()
 
     result = {
-        "num_adults": 0,
-        "num_children": 0,
-        "railcard": None,
-        "fare_class": None,
-        "ticket_category": None
+        "num_adults": 1,  
+        "num_children": 0,  
+        "railcard": None,  
+        "fare_class": None,  
+        "ticket_category": None  
     }
 
-    # Adults
+    # Adults - extract number or assume 1 
     adult_match = re.search(r"(\d+)\s*adult", text)
     if adult_match:
         result["num_adults"] = int(adult_match.group(1))
     elif "adult" in text:
         result["num_adults"] = 1
 
-    # Children
+    # Children - extract number or assume 1 
     child_match = re.search(r"(\d+)\s*child", text)
     if child_match:
         result["num_children"] = int(child_match.group(1))
     elif "child" in text:
         result["num_children"] = 1
 
-    # Railcards
+    # Railcards - only apply if explicitly mentioned
     for rc in RAILCARD_DISCOUNTS.keys():
         if rc.lower() in text:
             result["railcard"] = rc
+            break  
 
-    # Fare class
-    if "first" in text:
+    # If not specified, API will return 
+    if "first" in text and "standard" not in text:
         result["fare_class"] = "FIRST"
-    elif "standard" in text:
+    elif "standard" in text and "first" not in text:
         result["fare_class"] = "STANDARD"
 
-    # Ticket category
+    # Ticket category - only apply if mentioned
     if "advance" in text:
         result["ticket_category"] = "Advance"
-    elif "off-peak" in text:
+    elif "off-peak" in text or "offpeak" in text:
         result["ticket_category"] = "Off-Peak"
     elif "anytime" in text:
         result["ticket_category"] = "Anytime"
