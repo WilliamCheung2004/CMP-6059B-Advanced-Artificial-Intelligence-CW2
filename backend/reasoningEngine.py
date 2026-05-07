@@ -132,13 +132,11 @@ def reset_delay_state():
     
 def is_delay_prediction_request(user_input: str) -> bool:
     triggers = [
-        "my train is delayed",
+        "train is delayed",
         "train is running late",
         "delayed by",
         "minutes late",
-        "minutes delayed",
-        "i am on a train",
-        "on the train"
+        "minutes delayed"
     ]
     return any(t in user_input.lower() for t in triggers)
 
@@ -943,20 +941,16 @@ def handle_post_completion(user_input):
     reset_state()
     return "Anything else I can help with?", None
 
-#Getting intent
 def process_user_input_internal(user_input: str):
 
-    # Handle post-completion
     if conversation_state["awaiting_next_action"]:
         return handle_post_completion(user_input)
 
-
-    # Ticket Flow
     if ticket_state.get("pending_ticket_offer"):
         result = handle_ticket_flow(user_input)
         if result:
             return result
-    
+
     if any(delay_state[k] is not None for k in ["current_station", "current_delay", "destination", "asking_for"]):
         conversation_state["intent"] = "delay_prediction"
         return handle_delay_prediction(user_input), "delay_prediction"
@@ -965,36 +959,59 @@ def process_user_input_internal(user_input: str):
         conversation_state["intent"] = "delay_prediction"
         return handle_delay_prediction(user_input), "delay_prediction"
 
-
-    kb_answer = get_kb_answer(user_input)
-    if kb_answer:
-        reset_state()
-        return phrase_kb_answer(kb_answer, user_input), "knowledge_query"
-
     intent, confidence = get_intent(user_input)
-
     stations = find_stations(user_input)
 
-    if stations and intent in ["unknown", "plan_journey"]:
+    # Resolve the current intent — update conversation_state FIRST
+    if conversation_state.get("asking_for") in REQUIRED_FIELDS and conversation_state["entities"]:
         conversation_state["intent"] = "plan_journey"
-    elif confidence > 0.6:
-        conversation_state["intent"] = intent
+    elif conversation_state["intent"] != "help":
+        if stations and intent in ["unknown", "plan_journey"]:
+            conversation_state["intent"] = "plan_journey"
+        elif confidence > 0.6:
+            conversation_state["intent"] = intent
 
-    intent = conversation_state["intent"]
-
+    # Read the resolved intent once
+    resolved_intent = conversation_state["intent"]
 
     if intent == "greeting":
         reset_state()
         return "Hi. How can I help?", "greeting"
 
+    # KB mode: only if PREVIOUS turn set intent to "help" AND this turn isn't also "help"
+    if resolved_intent == "help" and intent != "help":
+        kb_answer = get_kb_answer(user_input)
+        if kb_answer:
+            reset_state()
+            return phrase_kb_answer(kb_answer, user_input), "knowledge_query"
+        faq_key = intent_to_faq.get(intent)
+        if faq_key:
+            answer = get_faq(faq_key)
+            if answer:
+                reset_state()
+                return answer, "knowledge_query"
+        reset_state()
+        return chatbot([{"role": "user", "content": user_input}]) or "Sorry, I don't have details on that.", "knowledge_query"
 
-    if intent in ["plan_journey", "find_ticket"]:
-        return plan_journey(user_input), intent
+    if intent == "help":
+        conversation_state["intent"] = "help"
+        return (
+            "I can assist you with the following:\n"
+            "- Journey planning (routes, times, connections)\n"
+            "- Ticket booking (prices, types, railcards)\n"
+            "- Delay information and predictions\n"
+            "- Refunds and compensation\n\n"
+            "What would you like to know more about?",
+            "help"
+        )
 
-    if intent in ["refund_info", "delay_info", "seat_info", "platform_info", "live_status"]:
-        return handle_knowledge_query(user_input, intent), intent
+    if resolved_intent in ["plan_journey", "find_ticket"]:
+        return plan_journey(user_input), resolved_intent
 
-    return "Sorry I can only help with: journey planning, tickets, disruptions, refunds.", intent
+    if resolved_intent in ["refund_info", "delay_info", "seat_info", "platform_info", "live_status"]:
+        return handle_knowledge_query(user_input, resolved_intent), resolved_intent
+
+    return "Sorry I can only help with: journey planning, tickets, disruptions, refunds.", resolved_intent
 
 def process_user_input(user_input: str):
     response, intent = process_user_input_internal(user_input) or "Sorry, something went wrong."

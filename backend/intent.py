@@ -19,6 +19,14 @@ STOPWORDS = set([
     'ourselves', 'themselves', 'myself', 'yourself', 'himself', 'herself', 'itself', 'ourselves', 'themselves', 'also', 'too', 'up', 'down', 'over', 'under', 'again', 'further', 'then', 'once', 'here', 'there', 'all', 'any', 'both', 'each', 'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'only', 'own', 'same', 'than', 'very', 's', 't', 'can', 'will', 'don', 'should', 'now'
 ])
 
+date_keywords = [
+    "today", "tomorrow", "monday", "tuesday", "wednesday", "thursday",
+    "friday", "saturday", "sunday", "january", "february", "march",
+    "april", "may", "june", "july", "august", "september", "october",
+    "november", "december", "next", "jan", "feb", "mar", "apr", "jun",
+    "jul", "aug", "sep", "oct", "nov", "dec", "st", "nd", "rd", "th"
+]
+
 #Loading station names 
 STATIONS = []
 STATION_CODE = {}
@@ -342,14 +350,25 @@ def extract_entities(message: str):
 
     results = search_dates(message)
     if results:
-        dt = results[0][1]
-        dt = ensure_future_date(dt)
-        date_found = dt.date().strftime("%d/%m/%Y")
+        matched_text = results[0][0].lower().strip()
+        # Only accept if the matched text looks like an actual date reference
+        has_digit = any(c.isdigit() for c in matched_text)
+        has_keyword = any(kw in matched_text for kw in date_keywords)
+
+        if has_digit or has_keyword:
+            dt = results[0][1]
+            dt = ensure_future_date(dt)
+            date_found = dt.date().strftime("%d/%m/%Y")
 
     if not date_found:
         for ent in doc.ents:
             if ent.label_ == 'DATE':
-                normalised = normalise_date(ent.text)
+                ent_text = ent.text.lower().strip()
+                has_digit = any(c.isdigit() for c in ent_text)
+                has_keyword = any(kw in ent_text for kw in date_keywords)
+                if not has_digit and not has_keyword:
+                    continue
+                normalised = normalise_date(ent_text)
                 if normalised:
                     date_found = normalised
                     break
