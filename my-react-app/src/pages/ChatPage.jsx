@@ -5,12 +5,49 @@ import "../styles/chat.css"
 
 export default function ChatPage() {
 
-    const [messages, setMessages] = useState([
-        { text: "Hello! I'm TrainBot. How can I help you today?", sender: "bot" }
-    ])
+    const [sessionId] = useState(() => {
+        const stored = localStorage.getItem('trainbot_session')
+        if (stored) return stored
+        const newId = crypto.randomUUID()
+        localStorage.setItem('trainbot_session', newId)
+        return newId
+    })
+    
+    useEffect(() => {
+        localStorage.setItem('trainbot_session', sessionId)
+    }, [sessionId])
 
-    const [headerTitle, setHeaderTitle] = useState("TrainBot")
-    const [headerSubtitle, setHeaderSubtitle] = useState("")
+    const [messages, setMessages] = useState(() => {
+        const saved = localStorage.getItem('trainbot_messages')
+        if (saved) {
+            try {
+                return JSON.parse(saved)
+            } catch {}
+        }
+        return [
+            { text: "Hello! I'm TrainBot. How can I help you today?", sender: "bot"}
+        ]
+    })
+
+    const [headerTitle, setHeaderTitle] = useState(() => {
+        return localStorage.getItem('trainbot_headerTitle') || "TrainBot" 
+    })
+
+    const [headerSubtitle, setHeaderSubtitle] = useState(() => {
+        return localStorage.getItem('trainbot_headerSubtitle') || ""
+    })
+
+    useEffect(() => {
+        localStorage.setItem('trainbot_messages', JSON.stringify(messages))
+    }, [messages])
+
+    useEffect(() => {
+        localStorage.setItem('trainbot_headerTitle', headerTitle)
+    }, [headerTitle])
+
+    useEffect(() => {
+        localStorage.setItem('trainbot_headerSubtitle', headerSubtitle)
+    }, [headerSubtitle])
 
     const bottomRef = useRef(null)
 
@@ -26,7 +63,7 @@ export default function ChatPage() {
             const response = await fetch("http://localhost:5000/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message: text })
+                body: JSON.stringify({ message: text, session_id: sessionId })
             })
 
             const data = await response.json()
