@@ -29,7 +29,8 @@ conversation_state = {
     "intent": None,
     "entities": {},
     "awaiting_next_action": False,
-    "asking_for": None,  
+    "asking_for": None,
+    "awaiting_help_response": False,  # Flag for post-task help requests
 }
 
 ticket_state = {
@@ -111,18 +112,35 @@ Rules:
 def handle_knowledge_query(user_input: str, intent: str) -> str:
     answer = get_kb_answer(user_input)
     if answer:
-        reset_state()
-        return phrase_kb_answer(answer, user_input)
+        response = phrase_kb_answer(answer, user_input)
+        response += "\n\nWould you like help with anything else?"
+        conversation_state["awaiting_help_response"] = True
+        reset_state()  
+        return response
     
     #fallback to intent-mapped FAQ answer if no direct match in KB
     faq_key = intent_to_faq.get(intent)
     if faq_key:
         answer = get_faq(faq_key)
         if answer:
-            return answer  #return answer from the KB's FAQ if available
+            response = answer
+            response += "\n\nWould you like help with anything else?"
+            conversation_state["awaiting_help_response"] = True
+            reset_state()
+            return response 
 
     #fall back to LLM if KB has nothing
-    return chatbot([{"role": "user", "content": user_input}]) or "Sorry, I don't have an answer for that right now."
+    response = chatbot([{"role": "user", "content": user_input}]) or "Sorry, I don't have an answer for that right now."
+    response += "\n\nWould you like help with anything else?"
+    conversation_state["awaiting_help_response"] = True
+    reset_state()
+    return response
+
+def ask_continue():
+    """Prompt the user and keep routing active for their yes/no reply."""
+    ticket_state["ticket_step"] = "post_booking"
+    ticket_state["pending_ticket_offer"] = True   
+    return "Would you like me to help you with anything else?", "post_booking"
 
 def reset_delay_state():
     delay_state["current_station"] = None
@@ -132,13 +150,11 @@ def reset_delay_state():
     
 def is_delay_prediction_request(user_input: str) -> bool:
     triggers = [
-        "my train is delayed",
+        "train is delayed",
         "train is running late",
         "delayed by",
         "minutes late",
-        "minutes delayed",
-        "i am on a train",
-        "on the train"
+        "minutes delayed"
     ]
     return any(t in user_input.lower() for t in triggers)
 
@@ -213,13 +229,18 @@ def handle_delay_prediction(user_input: str) -> str:
         current_delay_mins=delay_state["current_delay"]
     )
     if result["predicted_delay"] is None:
-        #station not in model — ask again without resetting everything
         delay_state["current_station"] = None
         delay_state["asking_for"] = "current_station"
-        return result["message"]  #shows the helpful list of known stations
+        return result["message"]  
+    
+    # Prediction complete 
     reset_delay_state()
-    reset_state()
-    return result["message"]
+    message = result["message"]
+    message += "\n\nWould you like help with anything else?"
+    conversation_state["awaiting_help_response"] = True
+    reset_state() 
+    
+    return message
 
 def get_missing_fields(entities):
     return [f for f in REQUIRED_FIELDS if f not in entities]
@@ -242,6 +263,7 @@ def reset_state():
     conversation_state["entities"] = {}
     conversation_state["awaiting_next_action"] = False
     conversation_state["asking_for"] = None
+    conversation_state["awaiting_help_response"] = False
 
 def reset_ticket_state():
     ticket_state["last_journey_options"] = None
@@ -249,9 +271,50 @@ def reset_ticket_state():
     ticket_state["last_filtered_tickets"] = None
     ticket_state["ticket_step"] = None
     ticket_state["ticket_state"] = False
+    ticket_state["pending_ticket_offer"] = False
     ticket_state["fare_class"] = None
     ticket_state["railcard"] = None
     ticket_state["ticket_preference"] = None
+
+def ask_continue_help():
+    """Generate a friendly message asking if user wants more help after task completion.
+    
+    Returns a tuple: (message, state_key)
+    This should be called after any task completion (journey, ticket, delay, etc.)
+    """
+    prompt = """You are a train assistant.
+
+The user has completed their current task.
+
+Ask if they would like help with anything else, and list the available options:
+- Journey planning (routes, times, connections)
+- Ticket booking (prices, types, railcards)
+- Delay information and predictions
+- Refunds and compensation
+
+Rules:
+- 2-3 sentences maximum
+- Formal tone
+- Natural and conversational
+- Do not invent anything
+- Ask yes or no response
+
+Format: Start with asking if they need more help, then list: 'I can help with:'"""
+    
+    llm_response = chatbot([{"role": "user", "content": prompt}])
+    
+    if llm_response:
+        # Set flag to await response
+        conversation_state["awaiting_help_response"] = True
+        reset_state() 
+        reset_ticket_state()
+        return llm_response, "help_options"
+    else:
+        # Fallback response
+        conversation_state["awaiting_help_response"] = True
+        reset_state()
+        reset_ticket_state()
+        return "Would you like help with anything else? I can help with: journey planning, tickets, delays, or refunds.", "help_options"
 
 #Ollama Chatbot
 def chatbot(messages):
@@ -446,7 +509,6 @@ def generate_journey_response(ents):
         conversation_state["asking_for"] = "time"
         return reask_for_field("time")
 
-    # 1. LLM confirmation message
     confirm_prompt = f"""
 You are a train assistant.
 
@@ -479,6 +541,8 @@ Time: {time if time else "Not provided"}
     journey_data = print_journey_details(origin_code, destination_code, depart_time)
 
     if not journey_data:
+        reset_state()
+        reset_ticket_state()
         return confirmation + "\n\nNo journeys found. Please try a different time,route or origin/destination."
 
     ticket_state["last_journey_options"] = journey_data
@@ -508,7 +572,7 @@ Time: {time if time else "Not provided"}
     ticket_state["pending_ticket_offer"] = True
     ticket_state["ticket_step"] = "confirm"
 
-    return confirmation + "\n" + msg + "\n\nWould you like to book a ticket for one of these times? (yes/no)"
+    return msg + "\n\nWould you like to book a ticket? (yes/no)"
 
 def build_national_rail_link(origin_code, destination_code, date, time):
     """Build National Rail Enquiries journey planner link with journey details"""
@@ -529,9 +593,12 @@ def build_national_rail_link(origin_code, destination_code, date, time):
         return None
 
 def ticket_pricing():
-    """Get ticket prices using expert system and filter by user preferences"""
+    """Get ticket prices using expert system and filter by user preferences
+    """
     selected_journey = ticket_state.get("selected_journey")
     if not selected_journey:
+        reset_state()
+        reset_ticket_state()
         return "Error: No journey selected.", "error"
     
     origin = selected_journey["origin"]
@@ -540,14 +607,16 @@ def ticket_pricing():
     # Get ticket details from ticket state
     num_adults = ticket_state.get("num_adults", 1)
     num_children = ticket_state.get("num_children", 0)
-    fare_class_choice = ticket_state.get("fare_class", "standard")
-    ticket_category_choice = ticket_state.get("ticket_category")
-    railcard = ticket_state.get("railcard")
+    fare_class_choice = ticket_state.get("fare_class")  # Can be None to show all
+    ticket_category_choice = ticket_state.get("ticket_category")  # Can be None to show all
+    railcard = ticket_state.get("railcard")  # None if not mentioned
     ticket_preference = ticket_state.get("ticket_preference")  # cheapest, quickest, or None
     
     # Get date and time from selected journey departure
     departure_str = selected_journey.get("departure", "")
     if not departure_str:
+        reset_state()
+        reset_ticket_state()
         return "Error: No departure time in selected journey.", "error"
     
     try:
@@ -563,10 +632,37 @@ def ticket_pricing():
     if not depart_datetime:
         return "Error: Invalid date/time format.", "error"
     
-    # Map fare_class to API format
-    fare_class_api = "FIRST" if "first" in str(fare_class_choice).lower() else "STANDARD"
+    # If fare_class not specified, fetch both Standard and First class
+    all_prices = []
+    if fare_class_choice is None:
+        # Fetch Standard tickets
+        try:
+            standard_prices = get_ticket_prices(origin, destination, depart_datetime, 
+                                               num_adults, num_children, "STANDARD")
+            all_prices.extend(standard_prices)
+        except Exception as e:
+            print(f"Error fetching standard prices: {e}")
+        
+        # Fetch First class tickets
+        try:
+            first_prices = get_ticket_prices(origin, destination, depart_datetime, 
+                                            num_adults, num_children, "FIRST")
+            all_prices.extend(first_prices)
+        except Exception as e:
+            print(f"Error fetching first class prices: {e}")
+        
+        prices = all_prices if all_prices else []
+    else:
+        # Specific fare class requested
+        fare_class_api = "FIRST" if "first" in str(fare_class_choice).lower() else "STANDARD"
+        try:
+            prices = get_ticket_prices(origin, destination, depart_datetime, 
+                                       num_adults, num_children, fare_class_api)
+        except Exception as e:
+            print(f"Error fetching prices: {e}")
+            prices = []
     
-    # Map ticket_category to API format
+    # Map ticket_category to API format (for filtering)
     fare_category_map = {
         "advance": "ADVANCE",
         "off-peak": "OFF_PEAK",
@@ -574,32 +670,16 @@ def ticket_pricing():
     }
     fare_category_api = fare_category_map.get(ticket_category_choice, None) if ticket_category_choice else None
     
-    # Call API to get prices
-    try:
-        prices = get_ticket_prices(origin, destination, depart_datetime, 
-                                   num_adults, num_children, fare_class_api)
-    except Exception as e:
-        print(f"Error fetching prices: {e}")
-        prices = []
-    
-    # Filter tickets by fare class and category
+    # Filter tickets by category if specified
     filtered_tickets = []
     for ticket in prices:
-        ticket_class = ticket.get("fareClass", "").upper()
         ticket_category = ticket.get("fareCategory", "").upper()
         
-        class_match = ticket_class == fare_class_api
-        category_match = (fare_category_api is None) or (ticket_category == fare_category_api)
-        
-        if class_match and category_match:
+        # If category filter specified, apply it; otherwise include all
+        if fare_category_api is None or ticket_category == fare_category_api:
             filtered_tickets.append(ticket)
     
-    # Fallback if no exact matches
-    if not filtered_tickets and fare_category_api:
-        for ticket in prices:
-            if ticket.get("fareClass", "").upper() == fare_class_api:
-                filtered_tickets.append(ticket)
-    
+    # Fallback: if no matches after filtering, show all
     if not filtered_tickets:
         filtered_tickets = prices
     
@@ -609,10 +689,10 @@ def ticket_pricing():
     link = build_national_rail_link(origin_code, destination_code, date, time)
     
     if not filtered_tickets:
-        ticket_desc = f"{fare_class_choice.lower()} class"
+        ticket_desc = f"{fare_class_choice.lower()} class" if fare_class_choice else "available"
         if ticket_category_choice:
-            ticket_desc = f"{ticket_category_choice} ({fare_class_choice.lower()} class)"
-        msg = (f"I couldn't find any available {ticket_desc} tickets for "
+            ticket_desc = f"{ticket_category_choice} ({ticket_desc})"
+        msg = (f"I couldn't find any {ticket_desc} tickets for "
                f"{origin.title()} to {destination.title()} on {date}.\n\n"
                f"Please search on National Rail Enquiries:\n{link}")
         return msg, "ticket_complete"
@@ -624,7 +704,6 @@ def ticket_pricing():
     if ticket_preference == "cheapest" and filtered_tickets:
         selected_ticket = min(filtered_tickets, key=lambda t: int(t.get("totalPrice", 0)))
     elif ticket_preference == "quickest" and filtered_tickets:
-        # For quickest, we'd need journey data; use first available as default
         selected_ticket = filtered_tickets[0]
     else:
         selected_ticket = filtered_tickets[0] if filtered_tickets else None
@@ -639,21 +718,28 @@ def ticket_pricing():
     except:
         price_pounds = 0.0
     
-    # Apply railcard discount if applicable
+    # Apply railcard discount if explicitly mentioned by user
     final_price = price_pounds
     if railcard:
         discount_mult = RAILCARD_DISCOUNTS.get(railcard, {}).get("adult", 1.0)
         final_price = price_pounds * discount_mult
     
     # Display selected ticket
-    output = f"\nSelected ticket (Expert System Recommendation):\n\n"
+    output = f"\nSelected ticket:\n\n"
     output += f"  {origin.upper()} → {destination.upper()}\n"
     output += f"  Date: {date} | Time: {time}\n"
     output += f"  Passengers: {num_adults} adult{'s' if num_adults > 1 else ''}"
     if num_children:
         output += f", {num_children} child{'ren' if num_children > 1 else ''}"
+    output += "\n"
     
-    ticket_type_display = f"{ticket_category_choice} {fare_class_choice}" if ticket_category_choice else fare_class_choice
+    # Build ticket type display - handle None values gracefully
+    ticket_type_parts = []
+    if ticket_category_choice:
+        ticket_type_parts.append(ticket_category_choice)
+    if fare_class_choice:
+        ticket_type_parts.append(fare_class_choice)
+    ticket_type_display = " ".join(ticket_type_parts) if ticket_type_parts else "Standard"
     output += f" ({ticket_type_display})\n\n"
     
     # Display the selected ticket details
@@ -674,6 +760,8 @@ def ticket_pricing():
     output += f"\n📍 Book on National Rail Enquiries:\n{link}\n"
     output += "You can complete your booking through the link above."
     
+    ticket_state["ticket_step"] = "post_booking"
+    
     return output, "ticket_complete"
 
 
@@ -681,10 +769,10 @@ def handle_ticket_flow(user_input):
     step = ticket_state.get("ticket_step")
     text = user_input.lower().strip()
 
-    # Confirm for ticket
+    # Confirm for ticket 
     if step == "confirm":
         if text in ["yes", "y", "yeah", "yep", "ok", "sure"] or "yes" in text:
-            # Detect ticket preference from user input
+            # Detect ticket preference from user input in the confirmation
             cheapest_keywords = ["cheapest", "cheap", "lowest price", "lowest", "minimum"]
             quickest_keywords = ["quickest", "quick", "fastest", "fast", "shortest"]
             
@@ -695,138 +783,67 @@ def handle_ticket_flow(user_input):
             else:
                 ticket_state["ticket_preference"] = None
             
-            ticket_state["ticket_step"] = "select"
+            # Select the first journey option
             options = ticket_state.get("last_journey_options", [])
-
             if not options:
                 reset_ticket_state()
                 reset_state()
                 return "No journeys available to book.", "ticket_select"
-
-            msg = f"Choose an available journey option from 1 to {len(options)}:\n"
-            for i, j in enumerate(options, 1):
-                try:
-                    dep = j["services"][0]["departure"]
-                    arr = j["services"][0]["arrival"]
-                    op = j["services"][0]["operator"]
-                    msg += f"{i}. {op}, {dep} → {arr}\n"
-                except:
-                    msg += f"{i}. Invalid journey format\n"
-
-            return msg, "ticket_select"
+            
+            selected = options[0] 
+            ticket_state["selected_journey"] = {
+                "origin": selected["origin"],
+                "destination": selected["destination"],
+                "departure": selected["services"][0]["departure"],
+                "arrival": selected["services"][0]["arrival"]
+            }
+            
+            # Go directly to traveller info (skip the select step)
+            ticket_state["ticket_step"] = "traveller_info"
+            return (
+                "Great — who's travelling?\n"
+                "For example: '1 adult', '2 adults + 1 child', "
+                "'1 adult with a 16–25 Railcard'.",
+                "ticket_travellers"
+            )
 
         if text in ["no", "nope", "nah"]:
-            reset_ticket_state()
+            # Ask if user wants help with anything else
+            ticket_state["ticket_step"] = "post_booking"
             reset_state()
-            return "Okay, let me know if you need anything else.", "end"
+            reset_ticket_state()
+            return "Would you like me to help you with anything else?", "post_booking"
 
         return "Please answer yes or no.", "ticket_confirm"
 
 
-    # Seelct journey 
-    if step == "select":
-        if not text.isdigit():
-            return "Please choose a number.", "ticket_select"
-
-        idx = int(text) - 1
-        options = ticket_state.get("last_journey_options", [])
-
-        if not (0 <= idx < len(options)):
-            return f"Choose a number between 1 and {len(options)}.", "ticket_select"
-
-        selected = options[idx]
-
-        ticket_state["selected_journey"] = {
-            "origin": selected["origin"],
-            "destination": selected["destination"],
-            "departure": selected["services"][0]["departure"],
-            "arrival": selected["services"][0]["arrival"]
-        }
-
-        ticket_state["ticket_step"] = "traveller_info"
-
-        return (
-            "Great — who’s travelling?\n"
-            "For example: '1 adult', '2 adults + 1 child', "
-            "'1 adult with a 16–25 Railcard'.",
-            "ticket_travellers"
-        )
-
-
-    # Info for ticket
+    # Info for ticket - parse and infer from user input, then proceed to pricing
     if step == "traveller_info":
         parsed = parse_traveller_info(text)
 
-        # store parsed values in ticket_state
+        # Store parsed values in ticket_state
         ticket_state["num_adults"] = parsed["num_adults"]
         ticket_state["num_children"] = parsed["num_children"]
-        ticket_state["ticket_category"] = parsed["ticket_category"]
-        ticket_state["fare_class"] = parsed["fare_class"]
-        ticket_state["railcard"] = parsed["railcard"]
-
-        if not ticket_state["ticket_category"]:
-            ticket_state["ticket_step"] = "ticket_category"
-            return "You Can Choose A Ticket Type Of : [Advance]  [Off-Peak], or [Anytime]", "ticket_category"
-
-        if not ticket_state["fare_class"]:
-            ticket_state["ticket_step"] = "fare_class"
-            return "Would you like a [Standard] or [First Class] seat?", "ticket_fare_class"
-
-        if not ticket_state["railcard"]:
-            ticket_state["ticket_step"] = "railcard"
-            return "Would you also like to apply a Railcard option, we accept: [16-17], [16-25], [26-30], [Disabled] and [Senior] railcards", "ticket_railcard"
-
+        ticket_state["ticket_category"] = parsed["ticket_category"]  # None if not specified
+        ticket_state["fare_class"] = parsed["fare_class"]  # None if not specified
+        ticket_state["railcard"] = parsed["railcard"]  # None if not mentioned (don't ask, just don't apply)
+        
+        # Detect preference keywords in traveller info (cheapest, quickest, etc.)
+        cheapest_keywords = ["cheapest", "cheap", "lowest price", "lowest", "minimum"]
+        quickest_keywords = ["quickest", "quick", "fastest", "fast", "shortest"]
+        
+        if any(keyword in text for keyword in cheapest_keywords):
+            ticket_state["ticket_preference"] = "cheapest"
+        elif any(keyword in text for keyword in quickest_keywords):
+            ticket_state["ticket_preference"] = "quickest"
+        else:
+            # Use preference detected in confirm step, or default to None
+            if not ticket_state.get("ticket_preference"):
+                ticket_state["ticket_preference"] = None
+        
+        ticket_state["pending_ticket_offer"] = False
         return ticket_pricing()
 
-    # Ticket type selection step
-    if step == "ticket_category":
-        valid_types = ["advance", "off-peak", "anytime"]
-        user_type = text.lower().replace(" ", "")
-        # Accept with or without dash
-        if user_type in [t.replace("-", "") for t in valid_types]:
-            ticket_state["ticket_category"] = [t for t in valid_types if user_type == t.replace("-", "")][0]
-            # Move to next step
-            if not ticket_state["fare_class"]:
-                ticket_state["ticket_step"] = "fare_class"
-                return "Would you like a [Standard] or [First Class] seat?", "ticket_fare_class"
-            if not ticket_state["railcard"]:
-                ticket_state["ticket_step"] = "railcard"
-                return "Would you also like to apply a Railcard option, we accept: [16-17], [16-25], [26-30], [Disabled] and [Senior] railcards", "ticket_railcard"
-            return ticket_pricing()
-        else:
-            ticket_state["ticket_step"] = "ticket_category"
-            return "Please choose a valid ticket type: [Advance], [Off-Peak], or [Anytime]", "ticket_category"
-
-    # Fare class selection step
-    if step == "fare_class":
-        valid_classes = ["standard", "first class", "first"]
-        user_class = text.lower().replace(" ", "")
-        if user_class in [c.replace(" ", "") for c in valid_classes]:
-            ticket_state["fare_class"] = "standard" if user_class in ["standard"] else "first class"
-            # Move to next step
-            if not ticket_state["railcard"]:
-                ticket_state["ticket_step"] = "railcard"
-                return "Would you like to apply a Railcard option, we accept: [16-17], [16-25], [26-30], [Disabled] and [Senior] railcards", "ticket_railcard"
-            return ticket_pricing()
-        else:
-            ticket_state["ticket_step"] = "fare_class"
-            return "Please choose a valid seat class: [Standard] or [First Class]", "ticket_fare_class"
-
-    # Railcard apply
-    if step == "railcard":
-
-        if text in ["no", "none", "nope", "nah", "no railcard", "don't have", "don't have one"]:
-            ticket_state["railcard"] = None
-            ticket_state["pending_ticket_offer"] = False
-            return ticket_pricing()
-        
-        for rc in RAILCARD_DISCOUNTS.keys():
-            if rc.lower() in text:
-                ticket_state["railcard"] = rc
-                ticket_state["pending_ticket_offer"] = False
-                return ticket_pricing()
-
-        return "I didn’t recognise that Railcard. Try again or say no to skip.", "ticket_railcard"
     # Cheapest choice
     if step == "cheapest_choice":
         if text in ["yes", "y", "yeah", "yep", "ok", "sure"]:
@@ -878,6 +895,8 @@ def handle_ticket_flow(user_input):
             
             ticket_state["ticket_step"] = None
             reset_ticket_state()
+            ticket_state["ticket_step"] = "post_booking"
+            reset_state()
             return output, "ticket_complete"
         
         if text in ["no", "nope", "nah"]:
@@ -923,6 +942,33 @@ def handle_ticket_flow(user_input):
             return output, "ticket_complete"
         
         return "Please answer yes or no.", "ticket_cheapest_choice"
+    
+    # Post-booking state - ask if user wants help with anything else
+    if step == "post_booking":
+        text = user_input.lower().strip()
+        
+        # Check if this is the first time in post_booking (coming from ticket_pricing)
+        # If so, ask if they want help
+        if not conversation_state.get("post_booking_asked"):
+            conversation_state["post_booking_asked"] = True
+            return "Would you like me to help you with anything else?", "post_booking"
+        
+        # Handle response to the question
+        if any(x in text for x in ["yes", "y", "yeah", "yep", "ok", "sure"]):
+            # User wants more help
+            conversation_state["post_booking_asked"] = False
+            return ask_continue_help()
+        
+        if any(x in text for x in ["no", "nope", "nah"]):
+            # User doesn't want more help - exit gracefully
+            conversation_state["post_booking_asked"] = False
+            reset_ticket_state()
+            reset_state()
+            return "Thank you for using our service. Goodbye!", "end"
+        
+        # Invalid response - ask again
+        return "Please answer yes or no.", "post_booking"
+    
     return None
 
 #What happens after user is done with intent
@@ -943,20 +989,38 @@ def handle_post_completion(user_input):
     reset_state()
     return "Anything else I can help with?", None
 
-#Getting intent
 def process_user_input_internal(user_input: str):
 
-    # Handle post-completion
     if conversation_state["awaiting_next_action"]:
         return handle_post_completion(user_input)
 
+    # Handle post-task help request responses
+    if conversation_state.get("awaiting_help_response"):
+        text = user_input.lower().strip()
+        
+        if any(x in text for x in ["yes", "y", "yeah", "yep", "ok", "sure"]):
+            # User wants help - show options
+            conversation_state["awaiting_help_response"] = False
+            reset_state()
+            options = ["Journey planning", "Ticket booking", "Delay information", "Refunds"]
+            return "What would you like help with?\n- Journey planning\n- Ticket booking\n- Delay information\n- Refunds", "help_options"
+        
+        elif any(x in text for x in ["no", "nope", "nah"]):
+            # User doesn't want help - exit gracefully
+            conversation_state["awaiting_help_response"] = False
+            reset_state()
+            reset_ticket_state()
+            return "Thank you for using our service. Goodbye!", "end"
+        
+        else:
+            # Invalid response
+            return "Please answer yes or no - would you like more help?", "awaiting_help"
 
-    # Ticket Flow
     if ticket_state.get("pending_ticket_offer"):
         result = handle_ticket_flow(user_input)
         if result:
             return result
-    
+
     if any(delay_state[k] is not None for k in ["current_station", "current_delay", "destination", "asking_for"]):
         conversation_state["intent"] = "delay_prediction"
         return handle_delay_prediction(user_input), "delay_prediction"
@@ -965,36 +1029,59 @@ def process_user_input_internal(user_input: str):
         conversation_state["intent"] = "delay_prediction"
         return handle_delay_prediction(user_input), "delay_prediction"
 
-
-    kb_answer = get_kb_answer(user_input)
-    if kb_answer:
-        reset_state()
-        return phrase_kb_answer(kb_answer, user_input), "knowledge_query"
-
     intent, confidence = get_intent(user_input)
-
     stations = find_stations(user_input)
 
-    if stations and intent in ["unknown", "plan_journey"]:
+    # Resolve the current intent — update conversation_state FIRST
+    if conversation_state.get("asking_for") in REQUIRED_FIELDS and conversation_state["entities"]:
         conversation_state["intent"] = "plan_journey"
-    elif confidence > 0.6:
-        conversation_state["intent"] = intent
+    elif conversation_state["intent"] != "help":
+        if stations and intent in ["unknown", "plan_journey"]:
+            conversation_state["intent"] = "plan_journey"
+        elif confidence > 0.6:
+            conversation_state["intent"] = intent
 
-    intent = conversation_state["intent"]
-
+    # Read the resolved intent once
+    resolved_intent = conversation_state["intent"]
 
     if intent == "greeting":
         reset_state()
         return "Hi. How can I help?", "greeting"
 
+    # KB mode: only if PREVIOUS turn set intent to "help" AND this turn isn't also "help"
+    if resolved_intent == "help" and intent != "help":
+        kb_answer = get_kb_answer(user_input)
+        if kb_answer:
+            reset_state()
+            return phrase_kb_answer(kb_answer, user_input), "knowledge_query"
+        faq_key = intent_to_faq.get(intent)
+        if faq_key:
+            answer = get_faq(faq_key)
+            if answer:
+                reset_state()
+                return answer, "knowledge_query"
+        reset_state()
+        return chatbot([{"role": "user", "content": user_input}]) or "Sorry, I don't have details on that.", "knowledge_query"
 
-    if intent in ["plan_journey", "find_ticket"]:
-        return plan_journey(user_input), intent
+    if intent == "help":
+        conversation_state["intent"] = "help"
+        return (
+            "I can assist you with the following:\n"
+            "- Journey planning (routes, times, connections)\n"
+            "- Ticket booking (prices, types, railcards)\n"
+            "- Delay information and predictions\n"
+            "- Refunds and compensation\n\n"
+            "What would you like to know more about?",
+            "help"
+        )
 
-    if intent in ["refund_info", "delay_info", "seat_info", "platform_info", "live_status"]:
-        return handle_knowledge_query(user_input, intent), intent
+    if resolved_intent in ["plan_journey", "find_ticket"]:
+        return plan_journey(user_input), resolved_intent
 
-    return "Sorry I can only help with: journey planning, tickets, disruptions, refunds.", intent
+    if resolved_intent in ["refund_info", "delay_info", "seat_info", "platform_info", "live_status"]:
+        return handle_knowledge_query(user_input, resolved_intent), resolved_intent
+
+    return "Sorry I can only help with: journey planning, tickets, disruptions, refunds.", resolved_intent
 
 def process_user_input(user_input: str):
     response, intent = process_user_input_internal(user_input) or "Sorry, something went wrong."

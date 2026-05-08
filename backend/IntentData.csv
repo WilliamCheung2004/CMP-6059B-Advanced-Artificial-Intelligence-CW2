@@ -64,6 +64,37 @@
 "?",help
 "hello, I need help with trains",help
 "hi, what can you do for me",help
+"tell me about railcards",help
+"what ticket types are there",help
+"how do refunds work",help
+"explain off-peak tickets",help
+"what is delay repay",help
+"how does booking work",help
+"what are my options",help
+"tell me more about tickets",help
+"what can you tell me about delays",help
+"give me information on refunds",help
+plan a journey,plan_journey
+plan my journey,plan_journey
+help me plan a trip,plan_journey
+I want to plan a train journey,plan_journey
+journey planner,plan_journey
+plan travel route,plan_journey
+I need to travel tomorrow,plan_journey
+help me get from London to Manchester,plan_journey
+best route to Birmingham,plan_journey
+how do I get to Leeds,plan_journey
+travel options from Norwich to London,plan_journey
+route from A to B,plan_journey
+find fastest route,plan_journey
+find cheapest route,plan_journey
+best train connection,plan_journey
+how to travel to Oxford by train,plan_journey
+I need to get to London tomorrow,plan_journey
+what is the best way to travel to Manchester,plan_journey
+show me travel routes,plan_journey
+suggest a journey plan,plan_journey
+train route planner,plan_journey
 "book a ticket",find_ticket
 "buy a train ticket",find_ticket
 "get me a ticket",find_ticket
