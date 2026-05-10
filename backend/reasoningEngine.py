@@ -9,7 +9,7 @@ from database import save_message, save_journey, init_db
 from expertSystem import parse_traveller_info, RAILCARD_DISCOUNTS, TicketBot, Journey, TicketPreference, Railcard
 import uuid
 import json
-from datetime import datetime
+from datetime import date, datetime, timedelta
 
 confidence_threshold = 0.6
 
@@ -587,23 +587,48 @@ Time: {time if time else "Not provided"}
 
     return msg + "\n\nWould you like to book a ticket? (yes/no)", "journey_options", journey_tickets
 
-def build_national_rail_link(origin_code, destination_code, date, time):
-    """Build National Rail Enquiries journey planner link with journey details"""
+RAILCARD_URL_CODES = {
+    "16-17": "TSU",
+    "16-25": "YNG",
+    "26-30": "TST",
+    "Disabled": "DIS",
+    "Senior": "SRN",
+}
+
+def build_national_rail_link(origin_code, destination_code, date, time, ticket_state):
     try:
         date_obj = datetime.strptime(date, "%d/%m/%Y")
         time_obj = datetime.strptime(time, "%H:%M")
-        date_str = date_obj.strftime("%d%m%y")
-        hour = time_obj.strftime("%H")
-        minute = time_obj.strftime("%M")
+
+        dt = datetime.combine(date_obj.date(), time_obj.time())
+
+        rounded_minute = (dt.minute // 15) * 15
+        dt_rounded = dt.replace(minute=rounded_minute, second=0, microsecond=0)
+
+        date_str = dt_rounded.strftime("%d%m%y")
+        hour = dt_rounded.strftime("%H")
+        minute = dt_rounded.strftime("%M")
+
+        railcard_param = ""
+        railcard_name = ticket_state.get("railcard")
+
+        if railcard_name in RAILCARD_URL_CODES:
+            code = RAILCARD_URL_CODES[railcard_name]
+            railcard_param = f"&railcards={code}%7C1"
+
         link = (
             f"https://www.nationalrail.co.uk/journey-planner/"
             f"?type=single&origin={origin_code}&destination={destination_code}"
             f"&leavingType=departing&leavingDate={date_str}"
-            f"&leavingHour={hour}&leavingMin={minute}&adults=1&extraTime=0#O"
+            f"&leavingHour={hour}&leavingMin={minute}&adults=1"
+            f"{railcard_param}&extraTime=0#O"
         )
+
         return link
-    except:
+
+    except Exception as e:
         return None
+
 
 def ticket_pricing():
     """Get ticket prices using expert system and filter by user preferences
@@ -620,10 +645,10 @@ def ticket_pricing():
     # Get ticket details from ticket state
     num_adults = ticket_state.get("num_adults", 1)
     num_children = ticket_state.get("num_children", 0)
-    fare_class_choice = ticket_state.get("fare_class")  # Can be None to show all
-    ticket_category_choice = ticket_state.get("ticket_category")  # Can be None to show all
-    railcard = ticket_state.get("railcard")  # None if not mentioned
-    ticket_preference = ticket_state.get("ticket_preference")  # cheapest, quickest, or None
+    fare_class_choice = ticket_state.get("fare_class")  
+    ticket_category_choice = ticket_state.get("ticket_category") 
+    railcard = ticket_state.get("railcard")  
+    ticket_preference = ticket_state.get("ticket_preference")  
     
     # Get date and time from selected journey departure
     departure_str = selected_journey.get("departure", "")
@@ -699,7 +724,7 @@ def ticket_pricing():
     # Generate booking link
     origin_code = origin
     destination_code = destination
-    link = build_national_rail_link(origin_code, destination_code, date, time)
+    link = build_national_rail_link(origin_code, destination_code, date, time, ticket_state)
     
     if not filtered_tickets:
         ticket_desc = f"{fare_class_choice.lower()} class" if fare_class_choice else "available"
