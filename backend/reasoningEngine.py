@@ -564,6 +564,19 @@ Time: {time if time else "Not provided"}
 
     ticket_state["last_ticket_options"] = flat_options
 
+    journey_tickets = []
+    for opt in flat_options[:5]:
+        journey_tickets.append({
+            "origin": origin, 
+            "destination": destination, 
+            "departureTime": opt["departure"].split(" ")[1][:5] if " " in opt["departure"] else opt["departure"],
+            "departureDate": date, 
+            "changes": 0,
+            "price": 0,
+            "cheapest": False,
+            "bookingUrl": "#"
+        })
+
     msg = "\n\nHere are some live times found:\n"
 
     for i, opt in enumerate(flat_options[:5], 1):
@@ -572,7 +585,7 @@ Time: {time if time else "Not provided"}
     ticket_state["pending_ticket_offer"] = True
     ticket_state["ticket_step"] = "confirm"
 
-    return msg + "\n\nWould you like to book a ticket? (yes/no)"
+    return msg + "\n\nWould you like to book a ticket? (yes/no)", "journey_options", journey_tickets
 
 def build_national_rail_link(origin_code, destination_code, date, time):
     """Build National Rail Enquiries journey planner link with journey details"""
@@ -759,10 +772,22 @@ def ticket_pricing():
     
     output += f"\n📍 Book on National Rail Enquiries:\n{link}\n"
     output += "You can complete your booking through the link above."
+
+    # Build the ticket object for frontend cards
+    ticket = {
+        "origin": origin, 
+        "destination": destination, 
+        "departureTime": time, 
+        "departureDate": date, 
+        "changes": 0, 
+        "price": round(final_price, 2),
+        "cheapest": True,
+        "bookingUrl": link
+    }
     
     ticket_state["ticket_step"] = "post_booking"
     
-    return output, "ticket_complete"
+    return output, "ticket_complete", ticket
 
 
 def handle_ticket_flow(user_input):
@@ -1084,9 +1109,19 @@ def process_user_input_internal(user_input: str):
     return "Sorry I can only help with: journey planning, tickets, disruptions, refunds.", resolved_intent
 
 def process_user_input(user_input: str):
-    response, intent = process_user_input_internal(user_input) or "Sorry, something went wrong."
-    save_message(session_id, user_input, response, intent)
-    return response
+    result = process_user_input_internal(user_input)
+    if result is None:
+        response, intent = "Sorry, something went wrong.", "error"
+        save_message(session_id, user_input, response, intent)
+        return response
+    elif len(result) == 3:
+        response, intent, ticket = result
+        save_message(session_id, user_input, str(response), intent)
+        return response, intent, ticket
+    else:
+        response, intent = result
+        save_message(session_id, user_input, str(response), intent)
+        return response
 
 def main():
     init_db()

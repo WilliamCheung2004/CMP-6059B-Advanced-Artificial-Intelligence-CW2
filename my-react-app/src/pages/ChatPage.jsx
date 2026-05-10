@@ -55,9 +55,16 @@ export default function ChatPage() {
         bottomRef.current?.scrollIntoView({ behaviour: "smooth" })
     }, [messages])
 
+    const [sending, setSending] = useState(false)
+
     async function sendMessage(text) {
+
+        if (sending) return 
+
         const newMessages = [...messages, { text, sender: "user" }]
         setMessages(newMessages)
+
+        setSending(true)
 
         try {
             const response = await fetch("http://localhost:5000/chat", {
@@ -93,6 +100,8 @@ export default function ChatPage() {
                     sender: "bot"
                 }
             ])
+        } finally {
+            setSending(false)
         }
     }
 
@@ -127,7 +136,7 @@ export default function ChatPage() {
                     <div ref={bottomRef}></div>
                 </div>
 
-                <ChatInput sendMessage={sendMessage} />
+                <ChatInput sendMessage={sendMessage} disabled={sending} />
             </div>
         </div>
     )

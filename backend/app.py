@@ -19,10 +19,20 @@ def chat():
         print(f"Error processing the message: {e}")
         reply = "Something went wrong, try again."
 
+    tickets = []
+    if isinstance(reply, tuple) and len(reply) == 3:
+        reply_text = reply[0]
+        ticket_data = reply[2]
+        if isinstance(ticket_data, list):
+            tickets = ticket_data
+        elif isinstance(ticket_data, dict):
+            tickets = [ticket_data]
+        reply = reply_text if reply_text else ""
+
     return jsonify({
         'reply': reply,
         'options': [],
-        'tickets': [],
+        'tickets': tickets,
         'context': {
             'title': 'TrainBot',
             'subtitle': ''
