@@ -28,7 +28,6 @@ def chat():
         elif isinstance(ticket_data, dict):
             tickets = [ticket_data]
         reply = reply_text if reply_text else ""
-
     return jsonify({
         'reply': reply,
         'options': [],
@@ -37,6 +36,17 @@ def chat():
             'title': 'TrainBot',
             'subtitle': ''
         }
+    })
+
+@app.route('/restart', methods=['POST'])
+def restart_conversation():
+    data = request.get_json()
+    old_session_id = data.get('old_session_id')
+    new_session_id = data.get('new_session_id')
+
+    return jsonify({
+        'status': 'success',
+        'message': 'Conversation restarted',
     })
 
 if __name__ == '__main__':

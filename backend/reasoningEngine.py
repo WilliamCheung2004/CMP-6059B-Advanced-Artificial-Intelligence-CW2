@@ -572,20 +572,16 @@ Time: {time if time else "Not provided"}
             "departureTime": opt["departure"].split(" ")[1][:5] if " " in opt["departure"] else opt["departure"],
             "departureDate": date, 
             "changes": 0,
-            "price": 0,
             "cheapest": False,
             "bookingUrl": "#"
         })
 
-    msg = "\n\nHere are some live times found:\n"
-
-    for i, opt in enumerate(flat_options[:5], 1):
-        msg += f"{i}. {opt['operator']}, {opt['departure']} → {opt['arrival']}\n"
+    msg = "Would you like to book a ticket? (yes/no)"
 
     ticket_state["pending_ticket_offer"] = True
     ticket_state["ticket_step"] = "confirm"
 
-    return msg + "\n\nWould you like to book a ticket? (yes/no)", "journey_options", journey_tickets
+    return msg, "journey_options", journey_tickets
 
 RAILCARD_URL_CODES = {
     "16-17": "TSU",
@@ -763,40 +759,7 @@ def ticket_pricing():
         final_price = price_pounds * discount_mult
     
     # Display selected ticket
-    output = f"\nSelected ticket:\n\n"
-    output += f"  {origin.upper()} → {destination.upper()}\n"
-    output += f"  Date: {date} | Time: {time}\n"
-    output += f"  Passengers: {num_adults} adult{'s' if num_adults > 1 else ''}"
-    if num_children:
-        output += f", {num_children} child{'ren' if num_children > 1 else ''}"
-    output += "\n"
-    
-    # Build ticket type display - handle None values gracefully
-    ticket_type_parts = []
-    if ticket_category_choice:
-        ticket_type_parts.append(ticket_category_choice)
-    if fare_class_choice:
-        ticket_type_parts.append(fare_class_choice)
-    ticket_type_display = " ".join(ticket_type_parts) if ticket_type_parts else "Standard"
-    output += f" ({ticket_type_display})\n\n"
-    
-    # Display the selected ticket details
-    try:
-        desc = selected_ticket.get("description", "Fare")
-        output += f"  Selected: {desc}\n"
-        output += f"  Base Price: £{price_pounds:.2f}\n"
-        
-        if railcard:
-            output += f"  Railcard ({railcard}): £{final_price:.2f}\n"
-        else:
-            output += f"  Final Price: £{final_price:.2f}\n"
-    except:
-        output += f"  Selected: {selected_ticket.get('description', 'Fare')}\n"
-    
-    output += f"\n  Preference: {ticket_preference if ticket_preference else 'Best available'}\n"
-    
-    output += f"\n📍 Book on National Rail Enquiries:\n{link}\n"
-    output += "You can complete your booking through the link above."
+    output = ""
 
     # Build the ticket object for frontend cards
     ticket = {
@@ -806,7 +769,7 @@ def ticket_pricing():
         "departureDate": date, 
         "changes": 0, 
         "price": round(final_price, 2),
-        "cheapest": True,
+        "cheapest": ticket_preference == "cheapest",
         "bookingUrl": link
     }
     

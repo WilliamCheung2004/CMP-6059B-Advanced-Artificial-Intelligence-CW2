@@ -27,15 +27,6 @@
 }
 
 
-.chatHeader {
-    display: flex;
-    align-items: center;
-    gap: clamp(0.5rem, 1.5vw, 0.75rem);
-    margin-bottom: clamp(0.75rem, 2vw, 1.25rem);
-    padding-bottom: clamp(0.5rem, 2vw, 1rem);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-    flex-shrink: 0;
-}
 
 
 
@@ -88,9 +79,12 @@
     border-radius: 10px;
 }
 
+.ticketList {
+    width: 100%;
+}
 
 .message {
-    max-width: 85%;
+    max-width: 75%;
     padding: clamp(0.625rem, 2vw, 0.875rem) clamp(0.75rem, 2.5vw, 1.125rem);
     border-radius: clamp(1rem, 2.5vw, 1.25rem);
     font-size: clamp(0.8125rem, 2.5vw, 1rem);
@@ -232,7 +226,7 @@
 
 .charCounter.warning {
     color: #FF8C42;
-    font-weight:600;
+    font-weight: 600;
 }
 
 .calendarWrapper {
@@ -262,6 +256,50 @@
 
 .calendarWrapper .react-datepicker__day:hover {
     background-color: #E8F0FE;
+}
+
+.chatHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: clamp(0.5rem, 1.5vw, 0.75rem);
+    margin-bottom: clamp(0.75rem, 2vw, 1.25rem);
+    padding-bottom: clamp(0.5rem, 2vw, 1rem);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    flex-shrink: 0;
+}
+
+.headerText {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.125rem;
+    flex: 1;
+}
+
+.restartBtn {
+    background: transparent;
+    border: 1px solid #7A9BC2;
+    padding: clamp(0.5rem, 1.5vw, 0.625rem) clamp(1rem, 3vw, 1.5rem);
+    border-radius: clamp(1.25rem, 4vw, 2.5rem);
+    font-weight: 500;
+    font-size: clamp(0.75rem, 2.5vw, 1rem);
+    transition: all 0.2s ease;
+    color: white;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.restartBtn:hover {
+    background: #1A4A7A;
+    border-color: #FFFFFF;
+    transform: translateY(-2px);
+}
+
+.restartBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
 }
 
 @media (max-width: 480px) {
@@ -324,7 +362,7 @@
         font-size: 1.125rem;
     }
 
-        .calendarWrapper {
+    .calendarWrapper {
         bottom: 60px;
         left: 50%;
         transform: translateX(-50%);

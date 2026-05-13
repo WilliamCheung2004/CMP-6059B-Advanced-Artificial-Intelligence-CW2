@@ -33,22 +33,26 @@ export default function TickerCard({ ticket }) {
                     {ticket.returnChanges !== undefined && (
                         <span className="changes">{ticket.returnChanges === 0 ? "Direct" : `${ticket.returnChanges} change${ticket.returnChanges > 1 ? "s" : ""}`}</span>
                     )}
-                    </div>
+                </div>
             )}
 
             <div className="ticketFooter">
                 <div className="price-wrapper">
-                    <span className="price">£{ticket.price.toFixed(2)}</span>
+                    {ticket.price !== undefined && ticket.price !== null && (
+                        <span className="price">£{ticket.price.toFixed(2)}</span>
+                    )}
                     {badge && <span className={`badge ${badge.toLowerCase()}`}>{badge}</span>}
                 </div>
-                <a
-                    href={ticket.bookingUrl || "#"}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="bookButton"
-                >
-                    Book →
-                </a>
+                {ticket.bookingUrl && ticket.bookingUrl !== "#" && (
+                    <a
+                        href={ticket.bookingUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bookButton"
+                    >
+                        Book →
+                    </a>
+                )}
             </div>
         </div>
     )

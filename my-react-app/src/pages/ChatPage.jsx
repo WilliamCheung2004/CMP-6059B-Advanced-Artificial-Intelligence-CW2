@@ -5,7 +5,7 @@ import "../styles/chat.css"
 
 export default function ChatPage() {
 
-    const [sessionId] = useState(() => {
+    const [sessionId, setSessionId] = useState(() => {
         const stored = localStorage.getItem('trainbot_session')
         if (stored) return stored
         const newId = crypto.randomUUID()
@@ -57,6 +57,36 @@ export default function ChatPage() {
 
     const [sending, setSending] = useState(false)
 
+    const restartConversation = async () => {
+        const newSessionId = crypto.randomUUID()
+        setSessionId(newSessionId)
+        localStorage.setItem('trainbot_session', newSessionId)
+
+        const welcomeMessages = [
+            { text: "Hello! I'm TrainBot. How can I help you today?", sender: "bot"}
+        ]
+        setMessages(welcomeMessages)
+        localStorage.setItem('trainbot_messages', JSON.stringify(welcomeMessages))
+
+        setHeaderTitle("TrainBot")
+        setHeaderSubtitle("")
+        localStorage.setItem('trainbot_headerTitle', "TrainBot")
+        localStorage.setItem('trainbot_headerSubtitle', "")
+
+        try {
+            await fetch("http://localhost:5000/restart", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    old_session_id: sessionId,
+                    new_session_id: newSessionId
+                })
+            })
+        } catch (error) {
+            console.error("Failed to notify backend of restart:", error)
+        }
+    }
+
     async function sendMessage(text) {
 
         if (sending) return 
@@ -83,7 +113,7 @@ export default function ChatPage() {
             setMessages([
                 ...newMessages,
                 {
-                    text: data.reply || "I received your message.",
+                    text: data.reply || "",
                     sender: "bot",
                     options: data.options || [],
                     tickets: data.tickets || []
@@ -119,6 +149,7 @@ export default function ChatPage() {
                             <span className="headerSubtitle">{headerSubtitle}</span>
                         )}
                     </div>
+                    <button className="restartBtn" onClick={restartConversation} title="Restart conversation" disabled={sending}>Restart Conversation</button>
                 </div>
 
                 <div className="chatMessages">
