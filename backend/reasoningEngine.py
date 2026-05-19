@@ -1,6 +1,6 @@
 import requests
 from intentClassifier import classify_intent 
-from intent import detect_primary_intent, extract_entities, find_stations, extract_time_semantic, detect_intent, get_station_code
+from intent import detect_primary_intent, extract_entities, find_stations, extract_time_semantic, detect_intent, get_station_code, get_intents_by_priority, validate_date_time
 from APIData import print_journey_details,get_timestamp, get_ticket_prices
 from knowledge_base import get_faq, KB
 from delayPrediction import predict_arrival_delay
@@ -265,6 +265,25 @@ def reset_state():
     conversation_state["asking_for"] = None
     conversation_state["awaiting_help_response"] = False
 
+
+def resolve_intent_by_priority(message: str) -> tuple[str, float]:
+    """
+    Resolves intent using priority handling (deprioritizes greeting).
+    Returns (intent, confidence)
+    """
+    intents = get_intents_by_priority(message)
+    if not intents:
+        return "unknown", 0
+    
+    primary_intent = intents[0]
+    ml_intent, ml_conf = classify_intent(message)
+    
+    if ml_conf >= confidence_threshold:
+        # Use ML confidence if high enough
+        return ml_intent, ml_conf
+    
+    return primary_intent, 0.5
+
 def reset_ticket_state():
     ticket_state["last_journey_options"] = None
     ticket_state["last_ticket_options"] = None
@@ -336,15 +355,8 @@ def chatbot(messages):
     
 #Using intent keyword or classifier
 def get_intent(message: str):
-    intent = detect_primary_intent(message)
-    if intent != "unknown":
-        return intent, 1.0
-
-    ml_intent, ml_conf = classify_intent(message)
-    if ml_conf >= confidence_threshold:
-        return ml_intent, ml_conf
-
-    return "unknown", ml_conf
+    """Get intent with priority handling (deprioritizes greeting)."""
+    return resolve_intent_by_priority(message)
 
 
 #Pick one of the stations the user thinks 
@@ -417,7 +429,7 @@ def reask_for_field(field):
     return prompts.get(field, "Could you clarify?")
 
 
-def plan_journey(user_input):
+def plan_journey(user_input, skip_ticket_ask=False):
     ents = conversation_state["entities"]
 
     #Prevent Same origin and destination 
@@ -485,14 +497,24 @@ def plan_journey(user_input):
     if not raw_stations and asking_for in ("origin", "destination"):
         return ask_station_not_found(asking_for)
 
+    # Validate date and time if they exist
+    if ents.get("date"):
+        is_valid, error_msg = validate_date_time(ents["date"], ents.get("time"))
+        if not is_valid:
+            del ents["date"]
+            if "time" in ents:
+                del ents["time"]
+            conversation_state["asking_for"] = "date"
+            return error_msg + "\n" + reask_for_field("date")
+
     missing = get_missing_fields(ents)
     if missing:
         return reask_for_field(missing[0])
 
-    return generate_journey_response(ents)
+    return generate_journey_response(ents, skip_ticket_ask=skip_ticket_ask)
 
 #User given that they gave all information 
-def generate_journey_response(ents):
+def generate_journey_response(ents, skip_ticket_ask=False):
     origin = ents["origin"]
     destination = ents["destination"]
     date = ents["date"]
@@ -519,13 +541,8 @@ Rules:
 - no schedules
 - no greeting
 - formal
-- end with ONLY: "Here are some live times found:"
 - do NOT invent times or prices, link or recommend anything
-
-From: {origin}
-To: {destination}
-Date: {date}
-Time: {time if time else "Not provided"}
+- The journey details are: from {origin} to {destination} on {date} at {time}.
 """
 
     confirmation = chatbot([{"role": "user", "content": confirm_prompt}]) 
@@ -576,12 +593,32 @@ Time: {time if time else "Not provided"}
             "bookingUrl": "#"
         })
 
-    msg = "Would you like to book a ticket? (yes/no)"
-
+    # If skip_ticket_ask (find_ticket), go straight to asking traveller info (no journey times display)
+    if skip_ticket_ask:
+        options = ticket_state.get("last_journey_options", [])
+        if options:
+            selected = options[0]
+            ticket_state["selected_journey"] = {
+                "origin": selected["origin"],
+                "destination": selected["destination"],
+                "departure": selected["services"][0]["departure"],
+                "arrival": selected["services"][0]["arrival"]
+            }
+        
+        ticket_state["pending_ticket_offer"] = True
+        ticket_state["ticket_step"] = "traveller_info"
+        ticket_state["ticket_preference"] = None
+        
+        return confirmation + "\n\nWho's travelling?\nFor example: '1 adult', '2 adults + 1 child', '1 adult with a 16–25 Railcard', etc.", "traveller_info"
+    
+    msg = "\n\nHere are some live times found:\n"
+    # for i, opt in enumerate(flat_options[:5], 1):
+    #     msg += f"{i}. {opt['operator']}, {opt['departure']} → {opt['arrival']}\n"
+    
     ticket_state["pending_ticket_offer"] = True
     ticket_state["ticket_step"] = "confirm"
 
-    return msg, "journey_options", journey_tickets
+    return confirmation + msg + "\n\nWould you like to book a ticket? (yes/no)", "journey_options", journey_tickets
 
 RAILCARD_URL_CODES = {
     "16-17": "TSU",
@@ -759,7 +796,39 @@ def ticket_pricing():
         final_price = price_pounds * discount_mult
     
     # Display selected ticket
-    output = ""
+    output = f"\nSelected ticket:\n\n"
+    output += f"  {origin.upper()} → {destination.upper()}\n"
+    output += f"  Date: {date} | Time: {time}\n"
+    output += f"  Passengers: {num_adults} adult{'s' if num_adults > 1 else ''}"
+    if num_children:
+        output += f", {num_children} child{'ren' if num_children > 1 else ''}"
+    output += "\n"
+    
+    # Build ticket type display - handle None values gracefully
+    ticket_type_parts = []
+    if ticket_category_choice:
+        ticket_type_parts.append(ticket_category_choice)
+    if fare_class_choice:
+        ticket_type_parts.append(fare_class_choice)
+    ticket_type_display = " ".join(ticket_type_parts) if ticket_type_parts else "Standard"
+    output += f" ({ticket_type_display})\n\n"
+    
+    # Display the selected ticket details
+    try:
+        desc = selected_ticket.get("description", "Fare")
+        output += f"  Selected: {desc}\n"
+        output += f"  Base Price: £{price_pounds:.2f}\n"
+        
+        if railcard:
+            output += f"  Railcard ({railcard}): £{final_price:.2f}\n"
+        else:
+            output += f"  Final Price: £{final_price:.2f}\n"
+    except:
+        output += f"  Selected: {selected_ticket.get('description', 'Fare')}\n"
+    
+    output += f"\n  Preference: {ticket_preference if ticket_preference else 'Best available'}\n"
+    
+    output += f"\n📍 You Can Book on The National Rail Link Below:\n"
 
     # Build the ticket object for frontend cards
     ticket = {
@@ -774,8 +843,9 @@ def ticket_pricing():
     }
     
     ticket_state["ticket_step"] = "post_booking"
+    conversation_state["awaiting_help_response"] = True
     
-    return output, "ticket_complete", ticket
+    return output, "ticket_complete", ticket, "\n\nWould you like me to help with anything else?"  
 
 
 def handle_ticket_flow(user_input):
@@ -977,7 +1047,7 @@ def handle_ticket_flow(user_input):
             conversation_state["post_booking_asked"] = False
             reset_ticket_state()
             reset_state()
-            return "Thank you for using our service. Goodbye!", "end"
+            return "Thank you for using the rail service. Goodbye!", "end"
         
         # Invalid response - ask again
         return "Please answer yes or no.", "post_booking"
@@ -1019,7 +1089,6 @@ def process_user_input_internal(user_input: str):
             return "What would you like help with?\n- Journey planning\n- Ticket booking\n- Delay information\n- Refunds", "help_options"
         
         elif any(x in text for x in ["no", "nope", "nah"]):
-            # User doesn't want help - exit gracefully
             conversation_state["awaiting_help_response"] = False
             reset_state()
             reset_ticket_state()
@@ -1089,7 +1158,8 @@ def process_user_input_internal(user_input: str):
         )
 
     if resolved_intent in ["plan_journey", "find_ticket"]:
-        return plan_journey(user_input), resolved_intent
+        skip_ask = (resolved_intent == "find_ticket")
+        return plan_journey(user_input, skip_ticket_ask=skip_ask), resolved_intent
 
     if resolved_intent in ["refund_info", "delay_info", "seat_info", "platform_info", "live_status"]:
         return handle_knowledge_query(user_input, resolved_intent), resolved_intent
@@ -1102,6 +1172,10 @@ def process_user_input(user_input: str):
         response, intent = "Sorry, something went wrong.", "error"
         save_message(session_id, user_input, response, intent)
         return response
+    elif len(result) == 4:
+        response, intent, ticket, post_message = result
+        save_message(session_id, user_input, str(response), intent)
+        return response, intent, ticket, post_message
     elif len(result) == 3:
         response, intent, ticket = result
         save_message(session_id, user_input, str(response), intent)

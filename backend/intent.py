@@ -264,8 +264,61 @@ def detect_intent(message: str) -> list[str]:
     return sorted(scores, key=lambda x: scores[x], reverse=True) if scores else ['unknown']
 
 def detect_primary_intent(message: str) -> str:
+    """Returns the primary intent, deprioritizing greeting if other intents exist."""
     intents = detect_intent(message)
-    return intents[0] if intents else "unknown"
+    if not intents:
+        return "unknown"
+    
+    # If only greeting is found, return it
+    if len(intents) == 1:
+        return intents[0]
+    
+    # If multiple intents and greeting is in the list, skip it
+    if "greeting" in intents:
+        non_greeting = [i for i in intents if i != "greeting"]
+        return non_greeting[0] if non_greeting else "greeting"
+    
+    return intents[0]
+
+
+def get_intents_by_priority(message: str) -> list[str]:
+    """Returns all detected intents sorted by priority (greeting deprioritized)."""
+    intents = detect_intent(message)
+    if not intents:
+        return ["unknown"]
+    
+    # Move greeting to the end if it exists with other intents
+    if "greeting" in intents and len(intents) > 1:
+        non_greeting = [i for i in intents if i != "greeting"]
+        non_greeting.append("greeting")
+        return non_greeting
+    
+    return intents
+
+
+def validate_date_time(date_str: str, time_str: str = None) -> tuple[bool, str]:
+
+    try:
+        dt = datetime.strptime(date_str, "%d/%m/%Y")
+        today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        # Check if date is in the past
+        if dt.date() < today.date():
+            return False, "That date is in the past. Please provide a future date."
+        
+        # If today's date, check if time is provided and in the past
+        if dt.date() == today.date() and time_str:
+            try:
+                time_obj = datetime.strptime(time_str, "%H:%M").time()
+                current_time = datetime.now().time()
+                if time_obj <= current_time:
+                    return False, "That time has already passed today. Please provide a future time."
+            except:
+                pass
+        
+        return True, ""
+    except:
+        return False, "Invalid date format. Please use DD/MM/YYYY."
 
 
 def find_stations(message):

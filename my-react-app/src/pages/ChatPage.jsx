@@ -116,7 +116,8 @@ export default function ChatPage() {
                     text: data.reply || "",
                     sender: "bot",
                     options: data.options || [],
-                    tickets: data.tickets || []
+                    tickets: data.tickets || [],
+                    postMessage: data.postMessage || ""
                 }
             ])
 
@@ -160,6 +161,7 @@ export default function ChatPage() {
                             sender={msg.sender}
                             options={msg.options || []}
                             tickets={msg.tickets || []}
+                            postMessage={msg.postMessage || ""}
                             onOptionClick={handleOptionClick}
                             isLatest={false}
                         />
