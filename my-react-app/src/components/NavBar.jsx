@@ -8,6 +8,12 @@ export default function Navbar({ goChat }) {
             </div>
 
             <div className="navRight">
+                <button className="zoomBtn" onClick={() => document.body.style.zoom = "1.2"}>
+                    Zoom In
+                </button>
+                <button className="zoomBtn" onClick={() => document.body.style.zoom = "1.0"}>
+                    Zoom Out
+                </button>
                 <button className="chatBtn" onClick={goChat}>
                     Chat
                 </button>

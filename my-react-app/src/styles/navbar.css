@@ -74,16 +74,23 @@
     transform: translateY(-2px);
 }
 
-@media (max-width: 480px) {
-    .navbar {
-        width: 95%;
-    }
-
-    .chatBtn,
-    .helpBtn {
-        white-space: normal;
-    }
+.zoomBtn {
+    background: transparent;
+    border: 1px solid #7A9BC2;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.2s;
 }
+
+.zoomBtn:hover {
+    background: #1A4A7A;
+    border-color: #FFFFFF
+}
+
 
 
 @media (min-width: 769px) and (max-width: 1200px) {
@@ -97,7 +104,8 @@
     }
 
     .chatBtn,
-    .helpBtn {
+    .helpBtn,
+    .zoomBtn {
         padding: clamp(0.375rem, 1.2vw, 0.5rem) clamp(0.75rem, 2.5vw, 1.125rem);
         font-size: clamp(0.6875rem, 2vw, 0.875rem);
     }
@@ -116,8 +124,9 @@
     }
 
     .chatBtn,
-    .helpBtn {
-        padding: 0.375rem 0.75rem;
+    .helpBtn,
+    .zoomBtn {
+        padding: 0.275rem 0.45rem;
         font-size: 0.6875rem;
     }
 }
