@@ -27,6 +27,14 @@ date_keywords = [
     "jul", "aug", "sep", "oct", "nov", "dec", "st", "nd", "rd", "th"
 ]
 
+# Month mapping for parsing DD month YYYY format
+MONTH_MAP = {
+    'january': 1, 'jan': 1, 'february': 2, 'feb': 2, 'march': 3, 'mar': 3,
+    'april': 4, 'apr': 4, 'may': 5, 'june': 6, 'jun': 6, 'july': 7, 'jul': 7,
+    'august': 8, 'aug': 8, 'september': 9, 'sep': 9, 'october': 10, 'oct': 10,
+    'november': 11, 'nov': 11, 'december': 12, 'dec': 12
+}
+
 #Loading station names 
 STATIONS = []
 STATION_CODE = {}
@@ -69,6 +77,34 @@ def normalise_date(text):
     if not parsed:
         return None
     return parsed.strftime("%d/%m/%Y")
+
+def parse_day_month_year(text):
+    pattern = r'\b(\d{1,2})\s+([a-zA-Z]+)\s+(\d{4})\b'
+    match = re.search(pattern, text.lower())
+    if not match:
+        return None
+    
+    day_str, month_str, year_str = match.groups()
+    month_lower = month_str.lower().strip()
+    
+    if month_lower not in MONTH_MAP:
+        return None
+    
+    try:
+        day = int(day_str)
+        month = MONTH_MAP[month_lower]
+        year = int(year_str)
+        
+        # Validate day range (1-31)
+        if day < 1 or day > 31:
+            return None
+        
+        dt = datetime(year, month, day)
+        dt = ensure_future_date(dt)
+        return dt.date().strftime("%d/%m/%Y")
+    except ValueError:
+        return None
+
 
 def is_future_date(date_str):
     try:
@@ -264,7 +300,6 @@ def detect_intent(message: str) -> list[str]:
     return sorted(scores, key=lambda x: scores[x], reverse=True) if scores else ['unknown']
 
 def detect_primary_intent(message: str) -> str:
-    """Returns the primary intent, deprioritizing greeting if other intents exist."""
     intents = detect_intent(message)
     if not intents:
         return "unknown"
@@ -282,7 +317,6 @@ def detect_primary_intent(message: str) -> str:
 
 
 def get_intents_by_priority(message: str) -> list[str]:
-    """Returns all detected intents sorted by priority (greeting deprioritized)."""
     intents = detect_intent(message)
     if not intents:
         return ["unknown"]
@@ -401,17 +435,21 @@ def extract_entities(message: str):
 
     date_found = None
 
-    results = search_dates(message)
-    if results:
-        matched_text = results[0][0].lower().strip()
-        # Only accept if the matched text looks like an actual date reference
-        has_digit = any(c.isdigit() for c in matched_text)
-        has_keyword = any(kw in matched_text for kw in date_keywords)
+    # First, try to parse explicit "DD month YYYY" format (e.g., "28 may 2026")
+    date_found = parse_day_month_year(message)
 
-        if has_digit or has_keyword:
-            dt = results[0][1]
-            dt = ensure_future_date(dt)
-            date_found = dt.date().strftime("%d/%m/%Y")
+    if not date_found:
+        results = search_dates(message)
+        if results:
+            matched_text = results[0][0].lower().strip()
+            # Only accept if the matched text looks like an actual date reference
+            has_digit = any(c.isdigit() for c in matched_text)
+            has_keyword = any(kw in matched_text for kw in date_keywords)
+
+            if has_digit or has_keyword:
+                dt = results[0][1]
+                dt = ensure_future_date(dt)
+                date_found = dt.date().strftime("%d/%m/%Y")
 
     if not date_found:
         for ent in doc.ents:
@@ -500,26 +538,27 @@ def extract_entities(message: str):
 
 # Testing 
 if __name__ == '__main__':
-    # tests = [
-    #         "I want to book a ticket from Norwich to London tomorrow",
-    #         "Find me a tikcet 24/10/2026",  # typo
-    #         "I need to purchase a pass to Manchester",
-    #         "Is my train running late today?",
-    #         "What platfrom is the service to Leeds on?",  # typo
-    #         "Can I get a refund for a delayed train?",
-    #         "I want to travel on Friday",
-    #         "Can I get a ticket from Colchester to Norwich on the 25th March?",
-    #         "Hello, how are you?",  
-    #         "What's the next train from Cambridge to Oxford?"
-    #     ]
+    tests = [
+            "I want to book a ticket from Norwich to London tomorrow",
+            "Find me a tikcet 24/10/2026",  
+            "I need to purchase a pass to Manchester",
+            "Is my train running late today?",
+            "What platfrom is the service to Leeds on?",  
+            "Can I get a refund for a delayed train?",
+            "I want to travel on Friday",
+            "Can I get a ticket from Colchester to Norwich on the 25th March?",
+            "Hello, how are you?",  
+            "What's the next train from Cambridge to Oxford?"
+            "I need a ticket on 28 may 2026"
+        ]
 
-    # for msg in tests:
-    #         intent = detect_primary_intent(msg)
-    #         entities = extract_entities(msg)
-    #         print(f"Message: '{msg}'")
-    #         print(f"  Intent: {intent}")
-    #         print(f"  Entities: {entities}")
-    #         print()
-    # print(get_station_code("Norwich"))
+    for msg in tests:
+            intent = detect_primary_intent(msg)
+            entities = extract_entities(msg)
+            print(f"Message: '{msg}'")
+            print(f"  Intent: {intent}")
+            print(f"  Entities: {entities}")
+            print()
+    print(get_station_code("Norwich"))
     pass
 

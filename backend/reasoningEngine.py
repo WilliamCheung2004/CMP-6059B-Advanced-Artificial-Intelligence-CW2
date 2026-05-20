@@ -137,7 +137,6 @@ def handle_knowledge_query(user_input: str, intent: str) -> str:
     return response
 
 def ask_continue():
-    """Prompt the user and keep routing active for their yes/no reply."""
     ticket_state["ticket_step"] = "post_booking"
     ticket_state["pending_ticket_offer"] = True   
     return "Would you like me to help you with anything else?", "post_booking"
@@ -267,10 +266,7 @@ def reset_state():
 
 
 def resolve_intent_by_priority(message: str) -> tuple[str, float]:
-    """
-    Resolves intent using priority handling (deprioritizes greeting).
-    Returns (intent, confidence)
-    """
+
     intents = get_intents_by_priority(message)
     if not intents:
         return "unknown", 0
@@ -296,11 +292,7 @@ def reset_ticket_state():
     ticket_state["ticket_preference"] = None
 
 def ask_continue_help():
-    """Generate a friendly message asking if user wants more help after task completion.
-    
-    Returns a tuple: (message, state_key)
-    This should be called after any task completion (journey, ticket, delay, etc.)
-    """
+
     prompt = """You are a train assistant.
 
 The user has completed their current task.
@@ -355,7 +347,6 @@ def chatbot(messages):
     
 #Using intent keyword or classifier
 def get_intent(message: str):
-    """Get intent with priority handling (deprioritizes greeting)."""
     return resolve_intent_by_priority(message)
 
 
@@ -664,8 +655,7 @@ def build_national_rail_link(origin_code, destination_code, date, time, ticket_s
 
 
 def ticket_pricing():
-    """Get ticket prices using expert system and filter by user preferences
-    """
+
     selected_journey = ticket_state.get("selected_journey")
     if not selected_journey:
         reset_state()
