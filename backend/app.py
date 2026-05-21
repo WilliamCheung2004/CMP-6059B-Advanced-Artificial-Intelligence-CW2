@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from reasoningEngine import process_user_input
+from reasoningEngine import process_user_input, reset_all_states
 from database import init_db
 
 app = Flask(__name__)
@@ -57,6 +57,8 @@ def restart_conversation():
     data = request.get_json()
     old_session_id = data.get('old_session_id')
     new_session_id = data.get('new_session_id')
+
+    reset_all_states()
 
     return jsonify({
         'status': 'success',

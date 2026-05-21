@@ -1,4 +1,5 @@
 import requests
+import time
 from intentClassifier import classify_intent 
 from intent import detect_primary_intent, extract_entities, find_stations, extract_time_semantic, detect_intent, get_station_code, get_intents_by_priority, validate_date_time
 from APIData import print_journey_details,get_timestamp, get_ticket_prices
@@ -275,7 +276,6 @@ def resolve_intent_by_priority(message: str) -> tuple[str, float]:
     ml_intent, ml_conf = classify_intent(message)
     
     if ml_conf >= confidence_threshold:
-        # Use ML confidence if high enough
         return ml_intent, ml_conf
     
     return primary_intent, 0.5
@@ -290,6 +290,11 @@ def reset_ticket_state():
     ticket_state["fare_class"] = None
     ticket_state["railcard"] = None
     ticket_state["ticket_preference"] = None
+
+def reset_all_states():
+    reset_state()
+    reset_ticket_state()
+    reset_delay_state()
 
 def ask_continue_help():
 
@@ -338,11 +343,19 @@ def chatbot(messages):
     }
 
     try:
+        start_time = time.time()
         r = requests.post(url, json=payload)
+        elapsed_time = time.time() - start_time
+        
         if not r.ok:
+            print(f"[DEBUG] Chatbot request failed after {elapsed_time:.2f}s")
             return None
-        return r.json()["message"]["content"]
-    except:
+        
+        response_text = r.json()["message"]["content"]
+        print(f"[DEBUG] Chatbot responded in {elapsed_time:.2f} seconds")
+        return response_text
+    except Exception as e:
+        print(f"[DEBUG] Chatbot error: {str(e)}")
         return None    
     
 #Using intent keyword or classifier
@@ -537,6 +550,10 @@ Rules:
 """
 
     confirmation = chatbot([{"role": "user", "content": confirm_prompt}]) 
+    
+    # Fallback if chatbot is unavailable
+    if not confirmation:
+        confirmation = f"Journey from {origin.title()} to {destination.title()} on {date} at {time}."
 
     # Getting station code for API
     origin_code = get_station_code(origin)
