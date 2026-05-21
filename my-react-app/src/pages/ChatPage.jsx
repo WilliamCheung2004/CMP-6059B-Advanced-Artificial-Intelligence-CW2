@@ -3,7 +3,7 @@ import Message from "../components/Message"
 import ChatInput from "../components/ChatInput"
 import "../styles/chat.css"
 
-export default function ChatPage() {
+export default function ChatPage({ helpText, setHelpText }) {
 
     const [sessionId, setSessionId] = useState(() => {
         const stored = localStorage.getItem('trainbot_session')
@@ -169,7 +169,7 @@ export default function ChatPage() {
                     <div ref={bottomRef}></div>
                 </div>
 
-                <ChatInput sendMessage={sendMessage} disabled={sending} />
+                <ChatInput sendMessage={sendMessage} disabled={sending} helpText={helpText} setHelpText={setHelpText} />
             </div>
         </div>
     )

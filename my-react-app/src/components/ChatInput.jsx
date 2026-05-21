@@ -1,12 +1,19 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import DatePicker from "react-datepicker"
 import "react-datepicker/dist/react-datepicker.css"
 
-export default function ChatInput({ sendMessage, disabled }) {
+export default function ChatInput({ sendMessage, disabled, helpText, setHelpText }) {
     const [text, setText] = useState("")
     const [showCalendar, setShowCalendar] = useState(false)
     const [selectedDate, setSelectedDate] = useState(null)
     const max_char = 300
+
+    useEffect(() => {
+        if (helpText) {
+            setText(helpText)
+            setHelpText("")
+        }
+    }, [helpText, setHelpText])
 
     function handleSend() {
         if (!text.trim() || disabled) return

@@ -8,16 +8,23 @@ function App() {
     return localStorage.getItem('trainbot_page') || "landing"
   })
 
+  const [helpText, setHelpText] = useState("")
+
   function goToChat() {
     setPage("chat")
     localStorage.setItem('trainbot_page', 'chat')
   }
 
+  function handleHelpClick() {
+    goToChat()
+    setHelpText("I need help")
+  }
+
   return (
     <>
-      {page !== "landing" && <NavBar goChat={goToChat} />}
+      {page !== "landing" && <NavBar goChat={goToChat} onHelp={handleHelpClick} />}
       {page === "landing" && <LandingPage startChat={goToChat} />}
-      {page === "chat" && <ChatPage />}
+      {page === "chat" && <ChatPage helpText={helpText} setHelpText={setHelpText} />}
     </>
   )
 }
