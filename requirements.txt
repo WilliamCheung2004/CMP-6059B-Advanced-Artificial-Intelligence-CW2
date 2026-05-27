@@ -12,4 +12,3 @@ scikit_learn==1.8.0
 sentence_transformers==5.4.1
 spacy==3.8.14
 tensorflow==2.21.0
-python -c "import spacy; nlp = spacy.load('en_core_web_sm'); print('loaded')"

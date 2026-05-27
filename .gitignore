@@ -12,10 +12,6 @@ user.env
 
 *.log
 
-models/
-*.pkl
-*.joblib
-
 .DS_Store
 .idea/
 .vscode/
