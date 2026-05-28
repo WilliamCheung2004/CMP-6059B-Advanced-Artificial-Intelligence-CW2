@@ -204,6 +204,13 @@ def handle_delay_prediction(user_input: str) -> str:
 
         if "waterloo" in text and "merseyside" not in text:
             delay_state["destination"] = "WAT"
+        else:
+            seen_codes = {delay_state["current_station"]}
+            for s in stations[1:]:
+                code = get_station_code(s)
+                if code and code not in seen_codes:
+                    delay_state["destination"] = code
+                    break
 
     # Ask for whatever is still missing
     if delay_state["current_station"] is None:

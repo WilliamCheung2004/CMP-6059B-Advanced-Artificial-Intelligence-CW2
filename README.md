@@ -15,18 +15,22 @@ How to run in terminal:
 4. Change directory to the backend folder:
     cd backend
 
-5. Load the spaCy English language model (in terminal):
+5. Download the spaCy English language model:
+    python -m spacy download en_core_web_sm
+
+6. Verify it loaded correctly (optional):
     python -c "import spacy; nlp = spacy.load('en_core_web_sm'); print('loaded')"
 
-6. Then run the app.py file to run the backend.
+7. Then run the app.py file to run the backend.
+    - if the terminal returns an error saying "No such file or directory: 'stations.csv'", just redo the change directory to the backend (cd backend) and run app.py again
 
-7. Make a new terminal window and change directory to the frontend folder:
+8. Make a new terminal window and change directory to the frontend folder:
     cd my-react-app
 
-8. Install any dependencies:
+9. Install any dependencies:
     npm install
 
-9. Run the frontend:
+10. Run the frontend:
     npm run dev
 
-10. Open the local host website from the link provided (e.g. http://localhost:5173)
+11. Open the local host website from the link provided (e.g. http://localhost:5173)
