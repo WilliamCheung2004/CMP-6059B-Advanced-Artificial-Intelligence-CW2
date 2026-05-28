@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+models/
+*.pkl
+*.joblib
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

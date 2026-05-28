@@ -32,10 +32,8 @@ RAILCARD_DISCOUNTS = {
 }
 
 class TicketBot(KnowledgeEngine):
-    """Expert system for intelligent ticket selection based on user preferences and railcard."""
     
     def __init__(self, tickets_data=None):
-        """Initialize TicketBot with optional ticket data."""
         super().__init__()
         self.tickets_data = tickets_data or []
         self.selected_ticket = None
@@ -56,7 +54,6 @@ class TicketBot(KnowledgeEngine):
         return selected
     
     def apply_railcard_discount(self, base_price, railcard_type):
-        """Apply railcard discount to base price."""
         if not railcard_type:
             return base_price
         
@@ -65,7 +62,6 @@ class TicketBot(KnowledgeEngine):
         return base_price * multiplier
 
     def set_ticket_details(self, journey, ticket_type, railcard=None):
-        """Legacy method: Set ticket details and update journey fact."""
         if not self.tickets_data:
             print("Error: No ticket data available")
             return
@@ -119,7 +115,6 @@ class TicketBot(KnowledgeEngine):
     @Rule(Journey(preference=MATCH.p),
           NOT(Railcard(type=MATCH.anything)))
     def apply_ticket_no_railcard(self, p):
-        """Apply ticket selection without railcard."""
         if self.tickets_data:
             journey = [f for f in self.facts.values() if isinstance(f, Journey)]
             if journey:

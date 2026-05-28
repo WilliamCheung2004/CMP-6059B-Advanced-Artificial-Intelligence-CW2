@@ -21,16 +21,18 @@ How to run in terminal:
 6. Verify it loaded correctly (optional):
     python -c "import spacy; nlp = spacy.load('en_core_web_sm'); print('loaded')"
 
-7. Then run the app.py file to run the backend.
+7. Run delayModel.py then run intent.py to create the necessary models to run TrainBot
+
+8. Then run the app.py file to run the backend.
     - if the terminal returns an error saying "No such file or directory: 'stations.csv'", just redo the change directory to the backend (cd backend) and run app.py again
 
-8. Make a new terminal window and change directory to the frontend folder:
+9. Make a new terminal window and change directory to the frontend folder:
     cd my-react-app
 
-9. Install any dependencies:
+10. Install any dependencies:
     npm install
 
-10. Run the frontend:
+11. Run the frontend:
     npm run dev
 
-11. Open the local host website from the link provided (e.g. http://localhost:5173)
+12. Open the local host website from the link provided (e.g. http://localhost:5173)
