@@ -9,7 +9,7 @@ How to run in terminal:
 
 2. Run the mistral:7b Ollama model in the background to enable LLM functionality.
 
-3. Install dependencies:
+3. Install dependencies (Requires Python 3.9.6 or higher):
     pip install -r requirements.txt
 
 4. Change directory to the backend folder:
