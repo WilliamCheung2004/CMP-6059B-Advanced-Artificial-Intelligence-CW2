@@ -21,7 +21,7 @@ How to run in terminal:
 6. Verify it loaded correctly (optional):
     python -c "import spacy; nlp = spacy.load('en_core_web_sm'); print('loaded')"
 
-7. Run delayModel.py then run intent.py to create the necessary models to run TrainBot
+7. Run delayModel.py then run intentClassifier.py to create the necessary models to run TrainBot
 
 8. Then run the app.py file to run the backend.
     - if the terminal returns an error saying "No such file or directory: 'stations.csv'", just redo the change directory to the backend (cd backend) and run app.py again
